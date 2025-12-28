@@ -1,0 +1,22 @@
+{
+  "name": "session-tickets-bot",
+  "version": "2.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "Lakuzak, Ladno",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --loader ts-node/esm src/bot.ts"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "googleapis": "^169.0.0",
+    "grammy": "^1.38.4"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
