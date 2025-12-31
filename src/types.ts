@@ -1,12 +1,6 @@
-import { SessionFlavor, Context } from "grammy";
+// src/types.ts
 
-export interface UserRecord {
-  telegramId: number;
-  fio: string;
-  registeredAt: string;
-  subjects?: string[];
-  assignedTickets?: Record<string, { number: number; text: string }[]>;
-}
+import { SessionFlavor, Context } from "grammy";
 
 export interface UserSession {
   state?: "awaiting_fio" | "awaiting_subject_selection" | "awaiting_subject_and_sheet";
@@ -17,23 +11,41 @@ export interface UserSession {
 }
 
 export interface AdminSession {
-  state?: "awaiting_deadline_start" | "in_deadline_cycle";
+  state?: "awaiting_subject_name"  | "setting_deadlines" | "awaiting_registration_end_date" | "awaiting_editing_end_date" | "awaiting_preparation_end_date";
+  awaitingSubjectThreadId?: number;
   deadlines?: {
     registrationEnd: string;
-    phase1End: string;
-    phase2End: string;
-    phase3End: string;
+    editingEnd: string;
+    preparationEnd: string;
   };
-  lastAdminMessageId?: number;
+  currentPhase?: "registration" | "editing" | "preparation" | "finished";
 }
 
-export type SubjectConfig = Record<string, {
-  subjectAndSheetName: string;
-}>;
+export type MySession = {
+  user: UserSession;
+  admin: AdminSession;
+};
 
-export type TicketsBySubject = Record<string, {
+export type MyContext = Context & SessionFlavor<MySession>;
+
+
+export type Question = {
   number: number;
   text: string;
-}[]>;
+};
 
-export type MyContext = Context & SessionFlavor<{ user: UserSession, admin?: AdminSession }>;
+export type SubjectData = {
+  chatId: string;
+  questions: Question[];
+};
+
+export type AllSubjectsData = Record<string, SubjectData>;
+
+
+export interface UserRecord {
+  telegramId: number;
+  fio: string;
+  registeredAt: string;
+  subjects?: string[];
+  assignedTickets?: Record<string, { number: number; text: string }[]>;
+};

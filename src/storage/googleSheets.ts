@@ -1,9 +1,11 @@
+// src/storage/googleSheets.ts
+
 import { google } from "googleapis";
 import { CREDENTIALS_PATH, SPREADSHEET_ID, USERS_FILE } from "../config.js";
 import { readJson } from "../storage/jsonStorage.js";
-import { UserRecord } from "../types.js";
+import { UserRecord, Question } from "../types.js";
 
-export async function fetchTicketsFromSheet(sheetName: string): Promise<{ number: number; text: string }[]> {
+export async function fetchTicketsFromSheet(sheetName: string): Promise<Question[]> {
   const cleanSheetName = sheetName.trim();
 
   const auth = new google.auth.GoogleAuth({
@@ -20,13 +22,13 @@ export async function fetchTicketsFromSheet(sheetName: string): Promise<{ number
   });
 
   const rows = response.data.values || [];
-  const tickets: { number: number; text: string }[] = [];
+  const tickets: Question[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const cellValue = rows[i]?.[0];
     const rawText = cellValue?.toString().trim();
     if (!rawText) break;
-    const cleanText = rawText.replace(/\\n/g, " ");
+    const cleanText = rawText.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
     tickets.push({ number: i + 1, text: cleanText });
   }
 
@@ -74,7 +76,7 @@ export async function writeAssignedUsersToSheet() {
       }
     }
 
-    const values = assignments.map(fio => [fio]); // каждый ФИО — отдельная строка в столбце
+    const values = assignments.map(fio => [fio]);
 
     const range = `${subject}!C8:C${7 + values.length}`;
     await sheets.spreadsheets.values.update({

@@ -1,3 +1,5 @@
+// src/storage/jsonStorage.ts
+
 import { readFile, writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 
@@ -12,9 +14,6 @@ export async function readJson<T>(filename: string): Promise<T> {
     const data = await readFile(join(DATA_DIR, filename), "utf8");
     return JSON.parse(data) as T;
   } catch {
-    if (filename.endsWith("submissions.json")) {  // Ниебу нахуя, потом исправлю.
-      return [] as T;
-    }
     return {} as T;
   }
 }

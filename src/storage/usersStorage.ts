@@ -1,4 +1,5 @@
-// src/storage/users.ts
+// src/storage/usersStorage.ts
+
 import { UserRecord } from "../types.js";
 import { readJson, writeJson } from "./jsonStorage.js";
 import { USERS_FILE } from "../config.js";
@@ -32,7 +33,6 @@ export async function saveUserSubjects(telegramId: number, subjects: string[]): 
   if (users[userId]) {
     users[userId].subjects = subjects;
   } else {
-    // На всякий случай: если вдруг нет записи (маловероятно, но безопасно)
     users[userId] = {
       telegramId,
       fio: "Неизвестно",

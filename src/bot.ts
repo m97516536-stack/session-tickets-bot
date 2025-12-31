@@ -1,53 +1,32 @@
+// src/bot.ts
+
 import { Bot, session } from "grammy";
 import { GrammyError, HttpError } from "grammy";
 
-import { SESSIONS_FILE, BOT_TOKEN, ADMIN_ID } from "./config.js";
-import { MyContext } from "./types.js";
+import { BOT_TOKEN, SESSIONS_FILE } from "./config.js";
+import { MyContext, MySession } from "./types.js";
 
 import { readJson, writeJson } from "./storage/jsonStorage.js";
 
-import { commandStart } from "./commands/start.js";
-import { commandAdmin, commandInit } from "./commands/admin.js";
+import { commandAdmin } from "./commands/commandAdmin.js";
+import { commandInit } from "./commands/commandInit.js";
 
-import { handleFioInput } from "./handlers/handlerFioInput.js";
-import { handlerSubjectAnSsheetInput } from "./handlers/handlerSubjectAnSsheetInput.js"
-import { handleSubjectSelection } from "./handlers/handleSubjectSelection.js";
-import { handleAdminDeadlineInput } from "./handlers/handleAdminDeadlineInput.js";
+import { handleSubjectInput } from "./handlers/handleSubjectInput.js";
+import { handleAdminCallback } from "./handlers/handleAdminCallback.js";
+import { handleDateInput } from "./handlers/handleDateInput.js";
 
-let initialSessions = await readJson<Record<string, { user: any }>>(SESSIONS_FILE);
+import { startPhaseUpdater } from "./utils/updatePhase.js";
 
 const bot = new Bot<MyContext>(BOT_TOKEN);
 
+let initialSessions: Record<string, MySession> = await readJson<Record<string, MySession>>(SESSIONS_FILE);
+
 bot.use(
   session({
-    initial: () => ({ user: {}, admin: {} }), // ✅
-    getSessionKey: (ctx) => (ctx.from?.id ? String(ctx.from.id) : undefined),
+    initial: () => ({ user: {}, admin: {} }),
+    getSessionKey: (ctx) => String(ctx.from!.id),
     storage: {
-      read: (key) => {
-        const sessionData = initialSessions[key];
-        if (sessionData) {
-          return sessionData; // ✅ теперь возвращаем всё: user + admin
-        }
-        return { user: {}, admin: {} }; // ✅
-      },
-      write: async (key, value) => {
-        initialSessions[key] = value; // ✅ сохраняем всё: user + admin
-        await writeJson(SESSIONS_FILE, initialSessions);
-      },
-      delete: async (key) => {
-        delete initialSessions[key];
-        await writeJson(SESSIONS_FILE, initialSessions);
-      },
-    },
-  })
-)
-/*
-bot.use(
-  session({
-    initial: () => ({ user: {} }),
-    getSessionKey: (ctx) => (ctx.from?.id ? String(ctx.from.id) : undefined),
-    storage: {
-      read: (key) => initialSessions[key]?.user ? { user: initialSessions[key].user } : { user: {} },
+      read: (key) => initialSessions[key] || { user: {}, admin: {} },
       write: async (key, value) => {
         initialSessions[key] = value;
         await writeJson(SESSIONS_FILE, initialSessions);
@@ -59,70 +38,31 @@ bot.use(
     },
   })
 );
-*/
 
-bot.command("start", commandStart);
 bot.command("admin", commandAdmin);
 bot.command("init", commandInit);
+// bot.command("start", commandStart);
 
-bot.on("message:text", async (ctx) => {
-  const text = ctx.msg?.text;
-  if (text?.startsWith("/")) return;
-
-  if (ctx.chat?.type == "private") {
-    if (ctx.from?.id === ADMIN_ID && ctx.session.admin?.state === "awaiting_deadline_start") {
-      await handleAdminDeadlineInput(ctx);
-      return;
-    }
-
-    if (ctx.session.user.state === "awaiting_fio") {
-      await handleFioInput(ctx);
-    }
+bot.on("message:text", (ctx: MyContext) => {
+  if (ctx.session.admin.state === "awaiting_subject_name" && ctx.chat?.type === "supergroup") {
+    handleSubjectInput(ctx);
+    return;
   }
 
-  if(ctx.chat?.type == "supergroup") {
-    if (ctx.from?.id !== ADMIN_ID) return;
-    if (ctx.session.user.state == "awaiting_subject_and_sheet") {
-      await handlerSubjectAnSsheetInput(ctx);
-    }
+  if (ctx.session.admin.state?.startsWith("awaiting_")) {
+    handleDateInput(ctx);
+    return;
   }
+
+  return;
 });
 
-bot.on("callback_query:data", async (ctx) => {
-  if (ctx.chat?.type !== "private") return;
-
-  const data = ctx.callbackQuery.data;
-
-  if (ctx.from?.id == ADMIN_ID) {
-    if (data === "admin:new_cycle") {
-      ctx.session.admin = {
-        ...ctx.session.admin,
-        state: "awaiting_deadline_start",
-      };
-      await ctx.answerCallbackQuery();
-      // Обновим админ-сообщение с инструкцией
-      await commandAdmin(ctx);
-      return;
-    }
-
-    if (data === "admin:view_deadlines") {
-      await ctx.answerCallbackQuery();
-      await commandAdmin(ctx);
-      return;
-    }
-  }
-
-  // Только если пользователь в состоянии выбора предметов
-  if (ctx.session.user.state === "awaiting_subject_selection") {
-    await handleSubjectSelection(ctx);
-  } else {
-    // Можно игнорировать или обрабатывать другие кнопки позже
-    await ctx.answerCallbackQuery("❌ Эта кнопка больше не активна.");
-  }
+bot.on("callback_query:data", (ctx: MyContext) => {
+  handleAdminCallback(ctx);
 });
-
 
 console.log("🚀 Бот запущен!");
+await startPhaseUpdater();
 bot.start();
 
 bot.catch((err) => {

@@ -1,3 +1,5 @@
+// src/config.ts
+
 import "dotenv/config";
 
 function getEnvVar(name: string): string {
@@ -16,5 +18,4 @@ export const SPREADSHEET_ID = getEnvVar("SPREADSHEET_ID");
 export const SESSIONS_FILE = "user_sessions.json";
 export const USERS_FILE = "users.json";
 export const CREDENTIALS_PATH = "./credentials.json";
-export const SUBJECT_CONFIG_FILE = "subject_config.json";
-export const TICKETS_FILE = "tickets.json";
+export const SUBJECTS_DATA_FILE = "subjects_data.json";
