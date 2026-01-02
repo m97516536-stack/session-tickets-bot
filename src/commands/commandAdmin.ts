@@ -1,6 +1,9 @@
+// src/commands/commandAdmin.ts
+
 import { MyContext } from "../types.js";
 import { manageKeyboard } from "../utils/manageKeyboard.js";
-import { adminKeyboard_Preparation, adminKeyboard_SetDeadlines } from "../keyboards/adminKeyboard.js";
+import { adminKeyboard_Preparation } from "../keyboards/keyboardAdminPreRegistration.js";
+import { adminKeyboard_Registration } from "../keyboards/keyboardAdminRegistration.js";
 import { updateCurrentPhase } from "../utils/updatePhase.js";
 import { ADMIN_ID } from "../config.js";
 
@@ -18,7 +21,7 @@ export async function commandAdmin(ctx: MyContext) {
     keyboard = adminKeyboard_Preparation();
   } else if (ctx.session.admin.currentPhase === "registration") {
     text = "📋 Админ-панель (этап регистрации)";
-    // keyboard = adminKeyboard_Registration();
+    keyboard = adminKeyboard_Registration();
   } else if (ctx.session.admin.currentPhase === "editing") {
     text = "✏️ Админ-панель (этап редактирования)";
     // keyboard = adminKeyboard_Editing();

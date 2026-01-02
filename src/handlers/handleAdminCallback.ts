@@ -2,7 +2,7 @@
 
 import { MyContext } from "../types.js";
 import { manageKeyboard } from "../utils/manageKeyboard.js";
-import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../keyboards/adminKeyboard.js";
+import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../keyboards/keyboardAdminPreRegistration.js";
 import { ADMIN_ID } from "../config.js";
 import { updateCurrentPhase } from "../utils/updatePhase.js";
 import { getDeadlinesText } from "../utils/adminTexts.js";
@@ -106,7 +106,7 @@ export async function handleAdminCallback(ctx: MyContext) {
       getDeadlinesText(ctx.session.admin),
       adminKeyboard_SetDeadlines(),
       "admin",
-      false
+      true
     );
     return;
   }

@@ -1,4 +1,4 @@
-// src/keyboards/adminKeyboard.ts
+// src/keyboards/keyboardAdminPreRegistration.ts
 
 import { InlineKeyboard } from "grammy";
 
@@ -23,4 +23,8 @@ export function adminKeyboard_AwaitingDate(forStage: "registration" | "editing" 
     .text(`⏳ Введите дату (${forStage})...`, `awaiting_input_${forStage}`)
     .row()
     .text("❌ Отмена", "cancel_set_date");
+}
+
+export function adminKeyboard_Registration() {
+  return 
 }
