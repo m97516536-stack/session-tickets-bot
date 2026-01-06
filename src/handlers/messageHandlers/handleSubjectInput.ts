@@ -1,18 +1,12 @@
-// src/handlers/hendleSubjectInput.ts
+// src/handlers/messageHandlers/handleSubjectInput.ts
 
-import { MyContext, SubjectData } from "../types.js";
-import { fetchTicketsFromSheet } from "../storage/googleSheets.js";
-import { manageKeyboard } from "../utils/manageKeyboard.js";
-import { readJson, writeJson } from "../storage/jsonStorage.js";
-import { SUBJECTS_DATA_FILE } from "../config.js";
+import { MyContext, SubjectData } from "../../types.js";
+import { fetchTicketsFromSheet } from "../../storage/googleSheets.js";
+import { manageKeyboard } from "../../utils/manageKeyboard.js";
+import { readJson, writeJson } from "../../storage/jsonStorage.js";
+import { SUBJECTS_DATA_FILE } from "../../config.js";
 
 export async function handleSubjectInput(ctx: MyContext) {
-  if (ctx.session.admin.currentPhase !== undefined) {
-    delete ctx.session.admin.state;
-    delete ctx.session.admin.awaitingSubjectThreadId;
-    return;
-  }
-
   const subjectName = ctx.message?.text?.trim();
   const threadId = ctx.session.admin.awaitingSubjectThreadId;
 

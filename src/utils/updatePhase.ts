@@ -1,50 +1,74 @@
 // src/utils/updatePhase.ts
+// Возможно потом переписать под более умную логику для меньшей нагрузки
 
-import { AdminSession, MySession } from "../types.js";
+import { bot } from "../bot.js"; // Убедитесь, что экспортируете bot из src/bot.ts
+import { updateAllKeyboards } from "./updateKeyboards.js";
+
+import { PhaseConfig } from "../types.js";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
-import { SESSIONS_FILE, ADMIN_ID } from "../config.js";
+import { PHASE_CONFIG_FILE } from "../config.js";
 
-export function updateCurrentPhase(adminSession: AdminSession): void {
+export function updateCurrentPhase(config: PhaseConfig): void {
   const now = new Date();
 
-  if (!adminSession.deadlines) {
-    adminSession.currentPhase = undefined;
+  if (!config.deadlines) {
+    config.currentPhase = "preparation";
     return;
   }
 
-  const regEnd = new Date(adminSession.deadlines.registrationEnd);
-  const editEnd = new Date(adminSession.deadlines.editingEnd);
-  const prepEnd = new Date(adminSession.deadlines.preparationEnd);
+  const regEnd = new Date(config.deadlines.registrationEnd);
+  const editEnd = new Date(config.deadlines.editingEnd);
+  const tickEnd = new Date(config.deadlines.ticketingEnd);
 
   regEnd.setHours(23, 0, 0, 0);
   editEnd.setHours(23, 0, 0, 0);
-  prepEnd.setHours(23, 0, 0, 0);
+  tickEnd.setHours(23, 0, 0, 0);
 
   if (now < regEnd) {
-    adminSession.currentPhase = "registration";
+    config.currentPhase = "registration";
   } else if (now < editEnd) {
-    adminSession.currentPhase = "editing";
-  } else if (now < prepEnd) {
-    adminSession.currentPhase = "preparation";
+    config.currentPhase = "editing";
+  } else if (now < tickEnd) {
+    config.currentPhase = "ticketing";
   } else {
-    adminSession.currentPhase = "finished";
+    config.currentPhase = "finished";
   }
 }
 
+async function updatePhaseAndWriteIfChanged(): Promise<PhaseConfig["currentPhase"]> {
+  let config = await readJson<PhaseConfig>(PHASE_CONFIG_FILE);
+
+  const oldPhase = config.currentPhase;
+
+  updateCurrentPhase(config);
+
+  if (oldPhase !== config.currentPhase) {
+    await writeJson(PHASE_CONFIG_FILE, config);
+    console.log(`🔄 Фаза изменена с "${oldPhase}" на "${config.currentPhase}"`);
+  
+    // Обновляем все клавиатуры для новой фазы
+    await updateAllKeyboards(bot, config.currentPhase);
+  }
+
+  if (oldPhase !== config.currentPhase) {
+    await writeJson(PHASE_CONFIG_FILE, config);
+    console.log(`🔄 Фаза изменена с "${oldPhase}" на "${config.currentPhase}"`);
+  }
+
+  return config.currentPhase;
+}
+
 export async function startPhaseUpdater(): Promise<void> {
-  let sessions = await readJson<Record<string, MySession>>(SESSIONS_FILE);
-
   setInterval(async () => {
-    const adminSession = sessions[ADMIN_ID]?.admin;
-    if (!adminSession) return;
-
-    const oldPhase = adminSession.currentPhase;
-
-    updateCurrentPhase(adminSession);
-
-    // Сохраняем, если этап изменился
-    if (oldPhase !== adminSession.currentPhase) {
-      await writeJson(SESSIONS_FILE, sessions);
-    }
+    await updatePhaseAndWriteIfChanged();
   }, 60 * 1000);
+}
+
+export async function fastCheckPhase(): Promise<PhaseConfig["currentPhase"]> {
+  try {
+    return await updatePhaseAndWriteIfChanged();
+  } catch (error) {
+    console.error("❌ Ошибка при проверке фазы:", error);
+    return undefined;
+  }
 }

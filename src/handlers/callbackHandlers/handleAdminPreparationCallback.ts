@@ -1,24 +1,19 @@
-// src/handlers/handleAdminCallback.ts
+// src/handlers/callbackHandlers/handleAdminPreregistrationCallback.ts
 
-import { MyContext } from "../types.js";
-import { manageKeyboard } from "../utils/manageKeyboard.js";
-import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../keyboards/keyboardAdminPreRegistration.js";
-import { ADMIN_ID } from "../config.js";
-import { updateCurrentPhase } from "../utils/updatePhase.js";
-import { getDeadlinesText } from "../utils/adminTexts.js";
+import { MyContext } from "../../types.js";
+import { PHASE_CONFIG_FILE } from "../../config.js";
+import { readJson, writeJson } from "../../storage/jsonStorage.js";
+import { PhaseConfig } from "../../types.js";
+import { manageKeyboard } from "../../utils/manageKeyboard.js";
+import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../../keyboards/keyboardAdminPreparation.js";
+import { getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
 
-export async function handleAdminCallback(ctx: MyContext) {
-  if (ctx.from?.id !== ADMIN_ID) return;
-
+export async function handleAdminPreparationCallback(ctx: MyContext) {
   const data = ctx.callbackQuery?.data;
 
   if (data === "start_registration") {
-    if (ctx.session.admin.currentPhase !== undefined) {
-      await ctx.answerCallbackQuery("❌ Этап уже начался.");
-      return;
-    }
-    
     await ctx.answerCallbackQuery();
+
     ctx.session.admin.state = "setting_deadlines";
 
     await manageKeyboard(
@@ -47,7 +42,7 @@ export async function handleAdminCallback(ctx: MyContext) {
     return;
   }
 
-  if (data === "awaiting_input_preparation") {
+  if (data === "awaiting_input_ticketing") {
     await ctx.answerCallbackQuery({
       text: "Введите дату окончания подготовки (формат: YYYY-MM-DD)",
       show_alert: true,
@@ -57,6 +52,7 @@ export async function handleAdminCallback(ctx: MyContext) {
 
   if (data === "set_reg_end") {
     await ctx.answerCallbackQuery();
+
     ctx.session.admin.state = "awaiting_registration_end_date";
 
     await manageKeyboard(
@@ -71,6 +67,7 @@ export async function handleAdminCallback(ctx: MyContext) {
 
   if (data === "set_edit_end") {
     await ctx.answerCallbackQuery();
+
     ctx.session.admin.state = "awaiting_editing_end_date";
 
     await manageKeyboard(
@@ -83,14 +80,15 @@ export async function handleAdminCallback(ctx: MyContext) {
     return;
   }
 
-  if (data === "set_prep_end") {
+  if (data === "set_tick_end") {
     await ctx.answerCallbackQuery();
-    ctx.session.admin.state = "awaiting_preparation_end_date";
+
+    ctx.session.admin.state = "awaiting_ticketing_end_date";
 
     await manageKeyboard(
       ctx,
       getDeadlinesText(ctx.session.admin) + "\n\nВведите дату окончания подготовки (формат: YYYY-MM-DD):",
-      adminKeyboard_AwaitingDate("preparation"),
+      adminKeyboard_AwaitingDate("ticketing"),
       "admin",
       true
     );
@@ -99,6 +97,7 @@ export async function handleAdminCallback(ctx: MyContext) {
 
   if (data === "cancel_set_date") {
     await ctx.answerCallbackQuery();
+
     ctx.session.admin.state = "setting_deadlines";
 
     await manageKeyboard(
@@ -106,7 +105,7 @@ export async function handleAdminCallback(ctx: MyContext) {
       getDeadlinesText(ctx.session.admin),
       adminKeyboard_SetDeadlines(),
       "admin",
-      true
+      false
     );
     return;
   }
@@ -125,7 +124,7 @@ export async function handleAdminCallback(ctx: MyContext) {
       return;
     }
 
-    if (!ctx.session.admin.deadlines.registrationEnd || !ctx.session.admin.deadlines.editingEnd || !ctx.session.admin.deadlines.preparationEnd) {
+    if (!ctx.session.admin.deadlines.registrationEnd || !ctx.session.admin.deadlines.editingEnd || !ctx.session.admin.deadlines.ticketingEnd) {
       await manageKeyboard(
         ctx,
         "❌ Не все даты установлены. Установите все даты перед подтверждением.",
@@ -136,9 +135,31 @@ export async function handleAdminCallback(ctx: MyContext) {
       return;
     }
 
-    updateCurrentPhase(ctx.session.admin);
+    try {
+      let phaseConfig: PhaseConfig = await readJson<PhaseConfig>(PHASE_CONFIG_FILE);
+
+      phaseConfig.deadlines = {
+        registrationEnd: ctx.session.admin.deadlines.registrationEnd,
+        editingEnd: ctx.session.admin.deadlines.editingEnd,
+        ticketingEnd: ctx.session.admin.deadlines.ticketingEnd,
+      };
+      phaseConfig.currentPhase = "registration";
+
+      await writeJson(PHASE_CONFIG_FILE, phaseConfig);
+    } catch (error) {
+      console.error("❌ Ошибка при сохранении дедлайнов в файл:", error);
+      await manageKeyboard(
+        ctx,
+        "❌ Ошибка при сохранении дедлайнов.",
+        adminKeyboard_SetDeadlines(),
+        "admin",
+        false
+      );
+      return;
+    }
 
     delete ctx.session.admin.state;
+    delete ctx.session.admin.deadlines;
 
     await manageKeyboard(
       ctx,

@@ -2,13 +2,12 @@
 
 import { MyContext } from "../types.js";
 import { manageKeyboard } from "../utils/manageKeyboard.js";
+import { fastCheckPhase } from "../utils/updatePhase.js";
 import { ADMIN_ID } from "../config.js";
 
 export async function commandInit(ctx: MyContext) {
-  if (ctx.session.admin.currentPhase !== undefined) {
-    delete ctx.session.admin.state;
-    return;
-  }
+  const currentPhase = await fastCheckPhase();
+  if (currentPhase !== "preparation") return;
   if (ctx.chat?.type !== "supergroup") return;
   if (ctx.from?.id !== ADMIN_ID) return;
 

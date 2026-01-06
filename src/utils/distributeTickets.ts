@@ -1,13 +1,20 @@
 // src/utils/distributeTickets.ts
 
-import { UserRecord, TicketsBySubject } from "../types.js";
+import { UserRecord, Question } from "../types.js";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
-import { TICKETS_FILE, USERS_FILE } from "../config.js";
+import { SUBJECTS_DATA_FILE, USERS_FILE } from "../config.js";
 import { writeAssignedUsersToSheet } from "../storage/googleSheets.js";
 
-export async function distributeTickets() {
+type TicketsBySubject = Record<string, Question[]>;
+
+export async function distributeTickets(): Promise<void> {
   const usersRaw = await readJson<Record<string, UserRecord>>(USERS_FILE);
-  const tickets = await readJson<TicketsBySubject>(TICKETS_FILE);
+  const subjectsData = await readJson<Record<string, { chatId: string; questions: Question[] }>>(SUBJECTS_DATA_FILE);
+  
+  const tickets: TicketsBySubject = {};
+  for (const [subject, data] of Object.entries(subjectsData)) {
+    tickets[subject] = data.questions;
+  }
 
   const allUsers = Object.values(usersRaw).filter(u => u.subjects?.length);
   allUsers.sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime());
@@ -76,5 +83,4 @@ export async function distributeTickets() {
 
   await writeJson(USERS_FILE, result);
   await writeAssignedUsersToSheet();
-  return { outputFile: USERS_FILE };
 }

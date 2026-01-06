@@ -12,17 +12,13 @@ import { commandStart } from "./commands/commandStart.js";
 import { commandAdmin } from "./commands/commandAdmin.js";
 import { commandInit } from "./commands/commandInit.js";
 
-import { handleSubjectInput } from "./handlers/handleSubjectInput.js";
-import { handleAdminCallback } from "./handlers/handleAdminCallback.js";
-import { handleDateInput } from "./handlers/handleDateInput.js";
-import { handleFioInput } from "./handlers/handleFioInput.js";
-import { handleSubjectSelectionCallback } from "./handlers/handleSubjectSelectionCallback.js";
-import { handleChangeSubjects } from "./handlers/handleChangeSubjects.js";
-import { handleAdminRegistrationCallback } from "./handlers/handleAdminRegistrationCallback.js";
+import { handleCallbackQuery } from "./handlers/callbackHandlers/callbackRouter.js";
+import { handleMessage } from "./handlers/messageHandlers/messageRouter.js";
+
 
 import { startPhaseUpdater } from "./utils/updatePhase.js";
 
-const bot = new Bot<MyContext>(BOT_TOKEN);
+export const bot = new Bot<MyContext>(BOT_TOKEN);
 
 let initialSessions: Record<string, MySession> = await readJson<Record<string, MySession>>(SESSIONS_FILE);
 
@@ -48,42 +44,12 @@ bot.command("start", commandStart);
 bot.command("admin", commandAdmin);
 bot.command("init", commandInit);
 
-bot.on("message:text", (ctx: MyContext) => {
-  if (ctx.session.admin.state === "awaiting_subject_name" && ctx.chat?.type === "supergroup") {
-    handleSubjectInput(ctx);
-    return;
-  }
-
-  if (ctx.session.user.state === "awaiting_fio" && ctx.chat?.type === "private") {
-    handleFioInput(ctx);
-    return;
-  }
-
-  if (ctx.session.admin.state?.startsWith("awaiting_")) {
-    handleDateInput(ctx);
-    return;
-  }
-
-  return;
+bot.on("message:text", async (ctx) => {
+  await handleMessage(ctx);
 });
 
-bot.on("callback_query:data", (ctx: MyContext) => {
-  if (ctx.session.user.state === "awaiting_subject_selection") {
-    handleSubjectSelectionCallback(ctx);
-    return;
-  }
-  
-  if (ctx.callbackQuery?.data === "change_subjects") {
-    handleChangeSubjects(ctx);
-    return;
-  }
-
-  if (ctx.session.admin.currentPhase === "registration") {
-    handleAdminRegistrationCallback(ctx);
-    return;
-  }
-
-  handleAdminCallback(ctx);
+bot.on("callback_query:data", async (ctx) => {
+  await handleCallbackQuery(ctx);
 });
 
 console.log("🚀 Бот запущен!");

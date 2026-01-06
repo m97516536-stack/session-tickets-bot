@@ -19,3 +19,4 @@ export const SESSIONS_FILE = "user_sessions.json";
 export const USERS_FILE = "users.json";
 export const CREDENTIALS_PATH = "./credentials.json";
 export const SUBJECTS_DATA_FILE = "subjects_data.json";
+export const PHASE_CONFIG_FILE = "phases.json";

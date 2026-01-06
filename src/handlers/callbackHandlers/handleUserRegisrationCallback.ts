@@ -1,29 +1,58 @@
-import { MyContext, UserRecord } from "../types.js";
-import { manageKeyboard } from "../utils/manageKeyboard.js";
-import { readJson, writeJson } from "../storage/jsonStorage.js";
-import { USERS_FILE, SUBJECTS_DATA_FILE } from "../config.js";
-import { keyboardSubjectSelection, userKeyboard_Registration } from "../keyboards/keyboardUserRegistration.js";
-import { updateCurrentPhase } from "../utils/updatePhase.js";
-import { AllSubjectsData } from "../types.js";
+// src/handlers/callbackHandlers/handleUserRegistrationCallback.ts
 
-export async function handleSubjectSelectionCallback(ctx: MyContext) {
-  updateCurrentPhase(ctx.session.admin);
+import { manageKeyboard } from "../../utils/manageKeyboard.js";
+import { readJson, writeJson } from "../../storage/jsonStorage.js";
+import { USERS_FILE, SUBJECTS_DATA_FILE } from "../../config.js";
+import { keyboardSubjectSelection, userKeyboard_Registration } from "../../keyboards/keyboardUserRegistration.js";
+import { MyContext, UserRecord, AllSubjectsData } from "../../types.js";
 
-  if (ctx.session.admin.currentPhase !== "registration") {
-    await manageKeyboard(
-      ctx,
-      "❌ Регистрация завершена.",
-      undefined,
-      "user",
-      true
-    );
-    delete ctx.session.user.state;
+export async function handleChangeSubjectsCallback(ctx: MyContext) {
+  await ctx.answerCallbackQuery();
+
+  let allSubjects: string[] = [];
+
+  try {
+    const subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
+    allSubjects = Object.keys(subjectsData);
+  } catch (err) {
+    console.error("Ошибка загрузки предметов:", err);
+    await ctx.answerCallbackQuery("❌ Ошибка загрузки предметов.");
     return;
   }
 
+  const users = await readJson<Record<string, UserRecord>>(USERS_FILE);
+  const userId = String(ctx.from?.id);
+  const user = users[userId];
+
+  if (!user) {
+    await ctx.answerCallbackQuery("❌ Пользователь не найден.");
+    return;
+  }
+
+  const selected = user.subjects || [];
+
+  ctx.session.user.state = "awaiting_subject_selection";
+  ctx.session.user.selectedSubjects = [...selected];
+
+  const keyboard = keyboardSubjectSelection(ctx.session.user.selectedSubjects, allSubjects);
+
+  await manageKeyboard(
+    ctx,
+    "Выберите предметы, которые хотите готовить:",
+    keyboard,
+    "user",
+    false
+  );
+
+  return;
+}
+
+export async function handleSubjectSelectionCallback(ctx: MyContext) {
   const data = ctx.callbackQuery?.data;
 
   if (data?.startsWith("toggle_")) {
+    await ctx.answerCallbackQuery();
+
     const subject = data.replace("toggle_", "");
     const selected = ctx.session.user.selectedSubjects || [];
     const index = selected.indexOf(subject);
@@ -57,7 +86,6 @@ export async function handleSubjectSelectionCallback(ctx: MyContext) {
       false
     );
 
-    await ctx.answerCallbackQuery();
     return;
   }
 

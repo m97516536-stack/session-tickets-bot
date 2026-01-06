@@ -1,35 +1,17 @@
-// src/handlers/handleDateInput.ts
+// src/handlers/messageHandlers/handleDateInput.ts
 
-import { MyContext } from "../types.js";
-import { manageKeyboard } from "../utils/manageKeyboard.js";
-import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../keyboards/keyboardAdminPreRegistration.js";
-import { ADMIN_ID } from "../config.js";
-import { getDeadlinesText } from "../utils/adminTexts.js";
-import { updateCurrentPhase } from "../utils/updatePhase.js";
+import { MyContext } from "../../types.js";
+import { manageKeyboard } from "../../utils/manageKeyboard.js";
+import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../../keyboards/keyboardAdminPreparation.js";
+import { getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
 
 export async function handleDateInput(ctx: MyContext) {
-  if (ctx.from?.id !== ADMIN_ID) return;
-
-  updateCurrentPhase(ctx.session.admin);
-
-  if (ctx.session.admin.currentPhase !== undefined && ctx.session.admin.currentPhase !== "registration") {
-    await manageKeyboard(
-      ctx,
-      "❌ Этап изменился. Ввод дат больше недоступен.",
-      undefined,
-      "admin",
-      true
-    );
-    delete ctx.session.admin.state;
-    return;
-  }
-
   const text = ctx.message?.text?.trim();
 
   const state = ctx.session.admin.state;
   if (!state || !state.startsWith("awaiting_")) return;
 
-  const stage = state.replace("awaiting_", "").replace("_end_date", "") as "registration" | "editing" | "preparation";
+  const stage = state.replace("awaiting_", "").replace("_end_date", "") as "registration" | "editing" | "ticketing";
 
   if (!text) {
     await manageKeyboard(
@@ -76,7 +58,7 @@ export async function handleDateInput(ctx: MyContext) {
       ctx.session.admin.deadlines = {
         registrationEnd: "",
         editingEnd: "",
-        preparationEnd: "",
+        ticketingEnd: "",
       };
     }
     ctx.session.admin.deadlines.registrationEnd = date.toISOString();
@@ -86,20 +68,20 @@ export async function handleDateInput(ctx: MyContext) {
       ctx.session.admin.deadlines = {
         registrationEnd: "",
         editingEnd: "",
-        preparationEnd: "",
+        ticketingEnd: "",
       };
     }
     ctx.session.admin.deadlines.editingEnd = date.toISOString();
     delete ctx.session.admin.state;
-  } else if (ctx.session.admin.state === "awaiting_preparation_end_date") {
+  } else if (ctx.session.admin.state === "awaiting_ticketing_end_date") {
     if (!ctx.session.admin.deadlines) {
       ctx.session.admin.deadlines = {
         registrationEnd: "",
         editingEnd: "",
-        preparationEnd: "",
+        ticketingEnd: "",
       };
     }
-    ctx.session.admin.deadlines.preparationEnd = date.toISOString();
+    ctx.session.admin.deadlines.ticketingEnd = date.toISOString();
     delete ctx.session.admin.state;
   } else {
     return;
@@ -110,6 +92,6 @@ export async function handleDateInput(ctx: MyContext) {
     getDeadlinesText(ctx.session.admin),
     adminKeyboard_SetDeadlines(),
     "admin",
-    false
+    true
   );
 }
