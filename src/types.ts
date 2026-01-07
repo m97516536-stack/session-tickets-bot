@@ -19,6 +19,7 @@ export interface AdminSession {
     | "awaiting_editing_end_date"
     | "awaiting_ticketing_end_date";
   awaitingSubjectThreadId?: number;
+  downloadMode?: "with_redistribution" | "without_redistribution";
   deadlines?: {
     registrationEnd: string;
     editingEnd: string;

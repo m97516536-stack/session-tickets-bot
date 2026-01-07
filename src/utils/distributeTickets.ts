@@ -1,86 +1,124 @@
 // src/utils/distributeTickets.ts
 
-import { UserRecord, Question } from "../types.js";
+import { UserRecord, Question, AllSubjectsData } from "../types.js";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
 import { SUBJECTS_DATA_FILE, USERS_FILE } from "../config.js";
-import { writeAssignedUsersToSheet } from "../storage/googleSheets.js";
+import { writeAssignedUsersToSheetForSubject } from "../storage/googleSheets.js";
 
-type TicketsBySubject = Record<string, Question[]>;
+export async function distributeTicketsForSubject(subject: string): Promise<void> {
+  const usersRaw = await readJson<Record<string, UserRecord>>(USERS_FILE);
+  const subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
+
+  if (!subjectsData[subject]) {
+    throw new Error(`Предмет "${subject}" не найден в данных.`);
+  }
+  
+  const subjectTickets = subjectsData[subject].questions;
+  if (!subjectTickets || subjectTickets.length === 0) {
+    throw new Error(`В предмете "${subject}" нет вопросов.`);
+  }
+
+  const usersInSubject = Object.values(usersRaw)
+    .filter(user => 
+      user.subjects?.includes(subject) && 
+      user.fio?.trim() !== ""
+    )
+    .sort((a, b) => 
+      new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime()
+    );
+
+  if (usersInSubject.length === 0) {
+    throw new Error(`Нет пользователей, записанных на предмет "${subject}".`);
+  }
+
+  const updatedUsers: Record<string, UserRecord> = {};
+
+  for (const [userId, user] of Object.entries(usersRaw)) {
+    updatedUsers[userId] = {
+      ...user,
+      assignedTickets: user.assignedTickets 
+        ? { ...user.assignedTickets } 
+        : {}
+    };
+
+    if (updatedUsers[userId].assignedTickets) {
+      delete updatedUsers[userId].assignedTickets[subject];
+    }
+  }
+
+  const reorderedTickets = reorderTickets(subjectTickets);
+  const totalUsers = usersInSubject.length;
+  const totalTickets = reorderedTickets.length;
+  const q = Math.floor(totalTickets / totalUsers);
+  const r = totalTickets % totalUsers;
+  let index = 0;
+
+  for (let i = 0; i < totalUsers - r; i++) {
+    const user = usersInSubject[i];
+    const userId = String(user.telegramId);
+    
+    if (!updatedUsers[userId].assignedTickets) {
+      updatedUsers[userId].assignedTickets = {};
+    }
+    
+    updatedUsers[userId].assignedTickets[subject] = 
+      reorderedTickets.slice(index, index + q);
+    index += q;
+  }
+
+  for (let i = totalUsers - r; i < totalUsers; i++) {
+    const user = usersInSubject[i];
+    const userId = String(user.telegramId);
+    
+    if (!updatedUsers[userId].assignedTickets) {
+      updatedUsers[userId].assignedTickets = {};
+    }
+    
+    updatedUsers[userId].assignedTickets[subject] = 
+      reorderedTickets.slice(index, index + q + 1);
+    index += q + 1;
+  }
+
+  for (const user of usersInSubject) {
+    const userId = String(user.telegramId);
+    const tickets = updatedUsers[userId].assignedTickets?.[subject];
+    
+    if (tickets) {
+      tickets.sort((a, b) => a.number - b.number);
+    }
+  }
+
+  await writeJson(USERS_FILE, updatedUsers);
+  await writeAssignedUsersToSheetForSubject(subject);
+}
+
+function reorderTickets(tickets: Question[]): Question[] {
+  const reordered: Question[] = [];
+  let left = 0;
+  let right = tickets.length - 1;
+  let takeFromLeft = true;
+
+  while (left <= right) {
+    if (takeFromLeft) {
+      reordered.push(tickets[left++]);
+    } else {
+      reordered.push(tickets[right--]);
+    }
+    takeFromLeft = !takeFromLeft;
+  }
+
+  return reordered;
+}
 
 export async function distributeTickets(): Promise<void> {
-  const usersRaw = await readJson<Record<string, UserRecord>>(USERS_FILE);
-  const subjectsData = await readJson<Record<string, { chatId: string; questions: Question[] }>>(SUBJECTS_DATA_FILE);
+  const subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
+  const subjects = Object.keys(subjectsData);
   
-  const tickets: TicketsBySubject = {};
-  for (const [subject, data] of Object.entries(subjectsData)) {
-    tickets[subject] = data.questions;
-  }
-
-  const allUsers = Object.values(usersRaw).filter(u => u.subjects?.length);
-  allUsers.sort((a, b) => new Date(a.registeredAt).getTime() - new Date(b.registeredAt).getTime());
-
-  const result: Record<string, UserRecord> = {};
-  for (const user of allUsers) {
-    result[user.telegramId] = { ...user, assignedTickets: {} };
-  }
-
-  const allSubjects = new Set<string>();
-  for (const user of allUsers) {
-    for (const subject of user.subjects || []) {
-      allSubjects.add(subject);
+  for (const subject of subjects) {
+    try {
+      await distributeTicketsForSubject(subject);
+    } catch (err) {
+      console.warn(`Не удалось распределить билеты для предмета "${subject}":`, err);
     }
   }
-
-  for (const subject of allSubjects) {
-    const subjectTickets = tickets[subject];
-    if (!subjectTickets || subjectTickets.length === 0) continue;
-
-    const usersInSubject = allUsers.filter(u => u.subjects?.includes(subject));
-    const totalUsers = usersInSubject.length;
-    const totalTickets = subjectTickets.length;
-
-    if (totalUsers === 0) continue;
-
-    const reorderedTickets: typeof subjectTickets = [];
-    let left = 0;
-    let right = subjectTickets.length - 1;
-    let takeFromLeft = true;
-
-    while (left <= right) {
-      if (takeFromLeft) {
-        reorderedTickets.push(subjectTickets[left]);
-        left++;
-      } else {
-        reorderedTickets.push(subjectTickets[right]);
-        right--;
-      }
-      takeFromLeft = !takeFromLeft;
-    }
-
-    const q = Math.floor(totalTickets / totalUsers);
-    const r = totalTickets % totalUsers;
-
-    let index = 0;
-
-    for (let i = 0; i < totalUsers - r; i++) {
-      result[usersInSubject[i].telegramId].assignedTickets![subject] = reorderedTickets.slice(index, index + q);
-      index += q;
-    }
-
-    for (let i = totalUsers - r; i < totalUsers; i++) {
-      result[usersInSubject[i].telegramId].assignedTickets![subject] = reorderedTickets.slice(index, index + q + 1);
-      index += q + 1;
-    }
-  }
-
-  for (const user of Object.values(result)) {
-    if (user.assignedTickets) {
-      for (const subject in user.assignedTickets) {
-        user.assignedTickets[subject].sort((a, b) => a.number - b.number);
-      }
-    }
-  }
-
-  await writeJson(USERS_FILE, result);
-  await writeAssignedUsersToSheet();
 }

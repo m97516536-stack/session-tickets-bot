@@ -6,6 +6,7 @@ import { fastCheckPhase } from "../../utils/updatePhase.js";
 import { handleSubjectSelectionCallback, handleChangeSubjectsCallback } from "./handleUserRegisrationCallback.js";
 import { handleAdminRegistrationCallback } from "./handleAdminRegistrationCallback.js";
 import { handleAdminPreparationCallback } from "./handleAdminPreparationCallback.js";
+import { handleAdminEditingCallback } from "./handleAdminEditingCallback.js";
 
 export async function handleCallbackQuery(ctx: MyContext): Promise<void> {
   const currentPhase = await fastCheckPhase();
@@ -24,13 +25,18 @@ export async function handleCallbackQuery(ctx: MyContext): Promise<void> {
       return;
   }
 
-  if (currentPhase === "registration" && isAdmin && chatType === "private" && currentPhase === "registration") {
+  if (isAdmin && chatType === "private" && currentPhase === "registration") {
     await handleAdminRegistrationCallback(ctx);
     return;
   }
 
   if (isAdmin && chatType === "private" && currentPhase === "preparation"){
     await handleAdminPreparationCallback(ctx);
+    return;
+  }
+
+  if (isAdmin && chatType === "private" && currentPhase === "editing") {
+    handleAdminEditingCallback(ctx);
     return;
   }
 

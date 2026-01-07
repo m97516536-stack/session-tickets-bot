@@ -10,9 +10,5 @@ export function adminKeyboard_Editing() {
     .row()
     .text("📊 Статистика", "view_stats")
     .row()
-    .text("📥 Загрузить из таблицы", "download_from_sheet")
-    .row()
-    .text("🗑 Удалить участника", "remove_user")
-    .row()
-    .text("✏️ Редактировать участника", "edit_user");
+    .text("📥 Загрузить данные из таблицы", "download_from_sheet")
 }

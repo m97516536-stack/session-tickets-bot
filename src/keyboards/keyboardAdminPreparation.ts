@@ -3,7 +3,6 @@
 import { InlineKeyboard } from "grammy";
 import { AdminSession } from "../types.js";
 
-// Text
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
   const day = String(date.getUTCDate()).padStart(2, '0');
@@ -23,7 +22,6 @@ export function getDeadlinesText(adminSession: AdminSession): string {
   );
 }
 
-// Keyboard
 export function adminKeyboard_Preparation() {
   return new InlineKeyboard()
     .text("📝 Начать этап регистрации", "start_registration");

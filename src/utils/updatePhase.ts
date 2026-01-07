@@ -1,8 +1,9 @@
 // src/utils/updatePhase.ts
 // Возможно потом переписать под более умную логику для меньшей нагрузки
 
-import { bot } from "../bot.js"; // Убедитесь, что экспортируете bot из src/bot.ts
+import { bot } from "../bot.js";
 import { updateAllKeyboards } from "./updateKeyboards.js";
+import { distributeTickets } from "./distributeTickets.js";
 
 import { PhaseConfig } from "../types.js";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
@@ -43,10 +44,26 @@ async function updatePhaseAndWriteIfChanged(): Promise<PhaseConfig["currentPhase
   updateCurrentPhase(config);
 
   if (oldPhase !== config.currentPhase) {
+    if (oldPhase === "registration" && config.currentPhase === "editing") {
+      try {
+        console.log("🎯 Запуск автоматического распределения билетов...");
+        await distributeTickets();
+        console.log("✅ Распределение билетов успешно завершено!");
+      } catch (error) {
+        console.error("❌ КРИТИЧЕСКАЯ ОШИБКА при распределении билетов:", error);
+
+        config.currentPhase = oldPhase;
+        console.log(`⚠️ Фаза сохранена как "${oldPhase}" из-за ошибки распределения`);
+
+        await writeJson(PHASE_CONFIG_FILE, config);
+
+        return config.currentPhase;
+      }
+    }
+
     await writeJson(PHASE_CONFIG_FILE, config);
     console.log(`🔄 Фаза изменена с "${oldPhase}" на "${config.currentPhase}"`);
-  
-    // Обновляем все клавиатуры для новой фазы
+
     await updateAllKeyboards(bot, config.currentPhase);
   }
 
