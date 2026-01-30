@@ -7,7 +7,14 @@ import { handleSubjectSelectionCallback, handleChangeSubjectsCallback } from "./
 import { handleAdminRegistrationCallback } from "./handleAdminRegistrationCallback.js";
 import { handleAdminPreparationCallback } from "./handleAdminPreparationCallback.js";
 import { handleAdminEditingCallback } from "./handleAdminEditingCallback.js";
+import { handleUserTicketingCallback } from "./handleUserTicketingCallback.js";
+import { handleEditorTicketReviewCallback } from "./handleEditorTicketReviewCallback.js";
 
+/**
+ * Маршрутизатор коллбэков: направляет запросы в нужные обработчики по фазе и ролям.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleCallbackQuery(ctx: MyContext): Promise<void> {
   const currentPhase = await fastCheckPhase();
   const callbackData = ctx.callbackQuery?.data;
@@ -36,7 +43,17 @@ export async function handleCallbackQuery(ctx: MyContext): Promise<void> {
   }
 
   if (isAdmin && chatType === "private" && currentPhase === "editing") {
-    handleAdminEditingCallback(ctx);
+    await handleAdminEditingCallback(ctx);
+    return;
+  }
+
+  if (chatType === "private" && currentPhase === "ticketing") {
+    await handleUserTicketingCallback(ctx);
+    return;
+  }
+  
+  if (chatType === "supergroup" && callbackData?.startsWith("review_")) {
+    await handleEditorTicketReviewCallback(ctx);
     return;
   }
 

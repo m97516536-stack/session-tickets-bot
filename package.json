@@ -7,7 +7,9 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "dev": "node --loader ts-node/esm src/bot.ts"
+    "dev": "node --loader ts-node/esm src/bot.ts",
+    "build": "tsc --build",
+    "start": "node dist/bot.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

@@ -2,6 +2,24 @@
 
 import "dotenv/config";
 
+/**
+ * Конфигурация бота: обязательные переменные окружения и пути к локальным файлам.
+ *
+ * @exports
+ * - BOT_TOKEN: string — токен бота
+ * - ADMIN_ID: number — ID админа
+ * - SUPERGROUP_ID: number — ID группы
+ * - SPREADSHEET_ID: string — ID таблицы
+ * - SESSIONS_FILE: string — файл хранения сессий пользователей
+ * - USERS_FILE: string — файл с данными зарегистрированных пользователей
+ * - CREDENTIALS_PATH: string — путь к OAuth2-ключам Google API
+ * - SUBJECTS_DATA_FILE: string — файл с вопросами по предметам и статусами билетов
+ * - PHASE_CONFIG_FILE: string — файл с текущей фазой и дедлайнами
+ * - KEYBOARD_STATES_FILE: string — файл состояний клавиатур по чатам
+ * 
+ * @throws {Error} если любая из переменных окружения не задана в .env
+ */
+
 function getEnvVar(name: string): string {
   const value = process.env[name];
   if (value === undefined) {
@@ -20,3 +38,4 @@ export const USERS_FILE = "users.json";
 export const CREDENTIALS_PATH = "./credentials.json";
 export const SUBJECTS_DATA_FILE = "subjects_data.json";
 export const PHASE_CONFIG_FILE = "phases.json";
+export const KEYBOARD_STATES_FILE = "keyboardStates.json";

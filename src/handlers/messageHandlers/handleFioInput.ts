@@ -7,6 +7,11 @@ import { USERS_FILE, SUBJECTS_DATA_FILE } from "../../config.js";
 import { keyboardSubjectSelection } from "../../keyboards/keyboardUserRegistration.js";
 import { AllSubjectsData, UserRecord } from "../../types.js";
 
+/**
+ * Обрабатывает ввод ФИ пользователя при регистрации.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleFioInput(ctx: MyContext) {
   const fio = ctx.message?.text?.trim();
 

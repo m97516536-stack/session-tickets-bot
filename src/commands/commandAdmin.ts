@@ -8,6 +8,11 @@ import { adminKeyboard_Editing } from "../keyboards/keyboardAdminEditing.js";
 import { fastCheckPhase } from "../utils/updatePhase.js";
 import { ADMIN_ID } from "../config.js";
 
+/**
+ * Обрабатывает команду /admin: открывает админ-панель в зависимости от текущей фазы.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function commandAdmin(ctx: MyContext) {
   if (ctx.chat?.type !== "private") return;
   if (ctx.from?.id !== ADMIN_ID) return;

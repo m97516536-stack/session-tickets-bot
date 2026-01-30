@@ -6,6 +6,11 @@ import { manageKeyboard } from "../../utils/manageKeyboard.js";
 import { readJson, writeJson } from "../../storage/jsonStorage.js";
 import { SUBJECTS_DATA_FILE } from "../../config.js";
 
+/**
+ * Обрабатывает ввод названия предмета администратором при инициализации темы.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleSubjectInput(ctx: MyContext) {
   const subjectName = ctx.message?.text?.trim();
   const threadId = ctx.session.admin.awaitingSubjectThreadId;
@@ -33,7 +38,12 @@ export async function handleSubjectInput(ctx: MyContext) {
       delete allSubjectsData[oldSubjectName];
     }
 
-    const questions = await fetchTicketsFromSheet(subjectName);
+    const rawQuestions = await fetchTicketsFromSheet(subjectName);
+    const questions = rawQuestions.map(q => ({
+      ...q,
+      assignedTo: undefined,
+      status: "not_submitted" as const
+    }));
 
     allSubjectsData[subjectName] = {
       chatId: String(threadId),

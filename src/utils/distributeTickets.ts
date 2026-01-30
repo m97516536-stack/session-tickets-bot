@@ -5,6 +5,11 @@ import { readJson, writeJson } from "../storage/jsonStorage.js";
 import { SUBJECTS_DATA_FILE, USERS_FILE } from "../config.js";
 import { writeAssignedUsersToSheetForSubject } from "../storage/googleSheets.js";
 
+/**
+ * Распределяет билеты по одному предмету между зарегистрированными студентами.
+ * @param {string} subject - название предмета
+ * @returns {Promise<void>}
+ */
 export async function distributeTicketsForSubject(subject: string): Promise<void> {
   const usersRaw = await readJson<Record<string, UserRecord>>(USERS_FILE);
   const subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
@@ -32,7 +37,6 @@ export async function distributeTicketsForSubject(subject: string): Promise<void
   }
 
   const updatedUsers: Record<string, UserRecord> = {};
-
   for (const [userId, user] of Object.entries(usersRaw)) {
     updatedUsers[userId] = {
       ...user,
@@ -40,10 +44,12 @@ export async function distributeTicketsForSubject(subject: string): Promise<void
         ? { ...user.assignedTickets } 
         : {}
     };
+  }
 
-    if (updatedUsers[userId].assignedTickets) {
-      delete updatedUsers[userId].assignedTickets[subject];
-    }
+  const updatedSubjectsData = JSON.parse(JSON.stringify(subjectsData)) as AllSubjectsData;
+  for (const question of updatedSubjectsData[subject].questions) {
+    question.assignedTo = undefined;
+    question.status = "not_submitted";
   }
 
   const reorderedTickets = reorderTickets(subjectTickets);
@@ -56,42 +62,58 @@ export async function distributeTicketsForSubject(subject: string): Promise<void
   for (let i = 0; i < totalUsers - r; i++) {
     const user = usersInSubject[i];
     const userId = String(user.telegramId);
-    
-    if (!updatedUsers[userId].assignedTickets) {
-      updatedUsers[userId].assignedTickets = {};
+    const ticketNumbers = reorderedTickets.slice(index, index + q).map(t => t.number);
+    updatedUsers[userId].assignedTickets![subject] = ticketNumbers;
+
+    for (let j = index; j < index + q; j++) {
+      const questionNumber = reorderedTickets[j].number;
+      const qToUpdate = updatedSubjectsData[subject].questions.find(q => q.number === questionNumber);
+      if (qToUpdate) {
+        qToUpdate.assignedTo = user.telegramId;
+        qToUpdate.status = "not_submitted";
+      }
     }
-    
-    updatedUsers[userId].assignedTickets[subject] = 
-      reorderedTickets.slice(index, index + q);
+
     index += q;
   }
 
   for (let i = totalUsers - r; i < totalUsers; i++) {
     const user = usersInSubject[i];
     const userId = String(user.telegramId);
-    
-    if (!updatedUsers[userId].assignedTickets) {
-      updatedUsers[userId].assignedTickets = {};
+    const ticketNumbers = reorderedTickets.slice(index, index + q + 1).map(t => t.number);
+    updatedUsers[userId].assignedTickets![subject] = ticketNumbers;
+
+    for (let j = index; j < index + q + 1; j++) {
+      const questionNumber = reorderedTickets[j].number;
+      const qToUpdate = updatedSubjectsData[subject].questions.find(q => q.number === questionNumber);
+      if (qToUpdate) {
+        qToUpdate.assignedTo = user.telegramId;
+        qToUpdate.status = "not_submitted";
+      }
     }
-    
-    updatedUsers[userId].assignedTickets[subject] = 
-      reorderedTickets.slice(index, index + q + 1);
+
     index += q + 1;
   }
 
   for (const user of usersInSubject) {
     const userId = String(user.telegramId);
     const tickets = updatedUsers[userId].assignedTickets?.[subject];
-    
     if (tickets) {
-      tickets.sort((a, b) => a.number - b.number);
+      tickets.sort((a, b) => a - b);
     }
   }
 
   await writeJson(USERS_FILE, updatedUsers);
+  await writeJson(SUBJECTS_DATA_FILE, updatedSubjectsData);
+
   await writeAssignedUsersToSheetForSubject(subject);
 }
 
+/**
+ * Перетасовывает массив билетов по схеме "змейка" (1, N, 2, N-1, ...).
+ * @param {Question[]} tickets - исходный массив билетов
+ * @returns {Question[]}
+ */
 function reorderTickets(tickets: Question[]): Question[] {
   const reordered: Question[] = [];
   let left = 0;
@@ -110,6 +132,10 @@ function reorderTickets(tickets: Question[]): Question[] {
   return reordered;
 }
 
+/**
+ * Распределяет билеты по всем предметам последовательно.
+ * @returns {Promise<void>}
+ */
 export async function distributeTickets(): Promise<void> {
   const subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
   const subjects = Object.keys(subjectsData);

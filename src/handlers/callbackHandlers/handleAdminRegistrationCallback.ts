@@ -8,6 +8,11 @@ import { USERS_FILE, SUBJECTS_DATA_FILE } from "../../config.js";
 import { adminKeyboard_Registration } from "../../keyboards/keyboardAdminRegistration.js";
 import { AllSubjectsData } from "../../types.js";
 
+/**
+ * Обрабатывает действия администратора на этапе регистрации (просмотр пользователей и статистики).
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleAdminRegistrationCallback(ctx: MyContext) {
   const data = ctx.callbackQuery?.data;
 
@@ -183,4 +188,9 @@ export async function handleAdminRegistrationCallback(ctx: MyContext) {
     );
     return;
   }
+
+  await ctx.answerCallbackQuery({
+    text: "❌ Неизвестная команда.",
+    show_alert: true
+  });
 }

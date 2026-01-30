@@ -2,6 +2,7 @@
 
 import { Context, InlineKeyboard } from "grammy";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
+import { KEYBOARD_STATES_FILE } from "../config.js";
 
 interface KeyboardState {
   messageId: number;
@@ -12,18 +13,16 @@ interface KeyboardStorage {
   [key: string]: KeyboardState;
 }
 
-const KEYBOARD_STATES_FILE = "keyboardStates.json";
-
 type KeyboardType = "user" | "admin" | "init";
 
 /**
- * Универсальная функция для управления клавиатурой с сохранением состояний в файле.
- * Учитывает message_thread_id для супергрупп с темами.
- * @param ctx - Контекст бота
- * @param text - Текст сообщения
- * @param inlineKeyboard - Inline-клавиатура
- * @param type - Тип клавиатуры (для идентификации)
- * @param forceNew - Принудительно создать новое сообщение (например, при вводе текста)
+ * Управляет сообщением с клавиатурой: редактирует или создаёт новое.
+ * @param {Context} ctx - контекст бота
+ * @param {string} text - текст сообщения
+ * @param {InlineKeyboard} [inlineKeyboard] - клавиатура (опционально)
+ * @param {"user" | "admin" | "init"} [type="user"] - тип состояния
+ * @param {boolean} [forceNew=false] - принудительно создать новое сообщение
+ * @returns {Promise<void>}
  */
 export async function manageKeyboard(
   ctx: Context,

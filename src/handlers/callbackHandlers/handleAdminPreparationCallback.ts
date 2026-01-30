@@ -5,9 +5,14 @@ import { PHASE_CONFIG_FILE } from "../../config.js";
 import { readJson, writeJson } from "../../storage/jsonStorage.js";
 import { PhaseConfig } from "../../types.js";
 import { manageKeyboard } from "../../utils/manageKeyboard.js";
-import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../../keyboards/keyboardAdminPreparation.js";
-import { getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
+import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate, getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
+import { adminKeyboard_Registration } from "../../keyboards/keyboardAdminRegistration.js";
 
+/**
+ * Обрабатывает действия администратора на подготовительном этапе (установка дедлайнов).
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleAdminPreparationCallback(ctx: MyContext) {
   const data = ctx.callbackQuery?.data;
 
@@ -164,10 +169,15 @@ export async function handleAdminPreparationCallback(ctx: MyContext) {
     await manageKeyboard(
       ctx,
       "✅ Этап регистрации начался!\nТеперь участники могут регистрироваться.",
-      undefined,
+      adminKeyboard_Registration(),
       "admin",
       false
     );
     return;
   }
+
+  await ctx.answerCallbackQuery({
+    text: "❌ Неизвестная команда.",
+    show_alert: true
+  });
 }

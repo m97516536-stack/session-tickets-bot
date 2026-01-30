@@ -10,6 +10,11 @@ import { AllSubjectsData } from "../../types.js";
 import { fetchTicketsFromSheet, importUserAssignmentsFromSheet } from "../../storage/googleSheets.js";
 import { distributeTicketsForSubject } from "../../utils/distributeTickets.js";
 
+/**
+ * Обрабатывает действия администратора на этапе редактирования.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleAdminEditingCallback(ctx: MyContext) {
   const data = ctx.callbackQuery?.data;
 
@@ -293,4 +298,9 @@ export async function handleAdminEditingCallback(ctx: MyContext) {
     );
     return;
   }
+
+  await ctx.answerCallbackQuery({
+    text: "❌ Неизвестная команда.",
+    show_alert: true
+  });
 }

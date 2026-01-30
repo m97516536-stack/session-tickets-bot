@@ -5,6 +5,11 @@ import { manageKeyboard } from "../utils/manageKeyboard.js";
 import { fastCheckPhase } from "../utils/updatePhase.js";
 import { ADMIN_ID } from "../config.js";
 
+/**
+ * Обрабатывает команду /init: инициализирует новый предмет в теме супергруппы.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function commandInit(ctx: MyContext) {
   const currentPhase = await fastCheckPhase();
   if (currentPhase !== "preparation") return;

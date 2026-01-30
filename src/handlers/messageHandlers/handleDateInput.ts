@@ -5,6 +5,11 @@ import { manageKeyboard } from "../../utils/manageKeyboard.js";
 import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../../keyboards/keyboardAdminPreparation.js";
 import { getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
 
+/**
+ * Обрабатывает ввод даты администратором при установке дедлайнов.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleDateInput(ctx: MyContext) {
   const text = ctx.message?.text?.trim();
 

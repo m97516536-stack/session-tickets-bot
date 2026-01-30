@@ -2,6 +2,10 @@
 
 import { InlineKeyboard } from "grammy";
 
+/**
+ * Клавиатура администратора на этапе редактирования.
+ * @returns {InlineKeyboard}
+ */
 export function adminKeyboard_Editing() {
   return new InlineKeyboard()
     .text("📋 Все пользователи", "view_all_users")

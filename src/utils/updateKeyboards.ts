@@ -1,16 +1,15 @@
 // src/utils/updateKeyboards.ts
 
 import { Bot } from "grammy";
-import { MyContext, PhaseConfig } from "../types.js";
+import { MyContext, PhaseConfig, UserRecord } from "../types.js";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
-import { /*KEYBOARD_STATES_FILE,*/ USERS_FILE } from "../config.js";
+import { KEYBOARD_STATES_FILE, USERS_FILE } from "../config.js";
 import { InlineKeyboard } from "grammy";
 import { adminKeyboard_Preparation } from "../keyboards/keyboardAdminPreparation.js";
 import { adminKeyboard_Registration } from "../keyboards/keyboardAdminRegistration.js";
 import { adminKeyboard_Editing } from "../keyboards/keyboardAdminEditing.js";
 import { userKeyboard_Registration } from "../keyboards/keyboardUserRegistration.js";
-
-const KEYBOARD_STATES_FILE = "keyboardStates.json";
+import { userKeyboard_Ticketing, getUserTicketsText } from "../keyboards/keyboardUserTicketing.js";
 
 interface KeyboardState {
   messageId: number;
@@ -23,6 +22,12 @@ interface KeyboardStorage {
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * Обновляет все сохранённые клавиатуры в соответствии с текущей фазой.
+ * @param {Bot<MyContext>} bot - экземпляр бота
+ * @param {PhaseConfig["currentPhase"]} currentPhase - текущая фаза системы
+ * @returns {Promise<void>}
+ */
 export async function updateAllKeyboards(bot: Bot<MyContext>, currentPhase: PhaseConfig["currentPhase"]) {
   if (!currentPhase) {
     console.warn("⚠️ Попытка обновить клавиатуры без указанной фазы");
@@ -100,7 +105,20 @@ export async function updateAllKeyboards(bot: Bot<MyContext>, currentPhase: Phas
             text = "✏️ Сейчас идёт этап редактирования. Пожалуйста, дождитесь его окончания.";
             break;
           case "ticketing":
-            text = "🎫 Сейчас идёт этап подготовки билетов.";
+            try {
+              const fullUsers = await readJson<Record<string, UserRecord>>(USERS_FILE);
+              const user = fullUsers[userId];
+
+              if (user) {
+                text = await getUserTicketsText(user);
+              } else {
+                text = "❌ Пользователь не найден.";
+              }
+            } catch (err) {
+              console.error("Ошибка при генерации текста билетов:", err);
+              text = "⚠️ Не удалось загрузить список билетов.";
+            }
+            keyboard = userKeyboard_Ticketing();
             break;
           case "finished":
             text = "✅ Все этапы завершены. Спасибо за участие!";

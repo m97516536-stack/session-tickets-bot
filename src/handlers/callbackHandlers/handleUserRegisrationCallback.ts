@@ -6,6 +6,11 @@ import { USERS_FILE, SUBJECTS_DATA_FILE } from "../../config.js";
 import { keyboardSubjectSelection, userKeyboard_Registration } from "../../keyboards/keyboardUserRegistration.js";
 import { MyContext, UserRecord, AllSubjectsData } from "../../types.js";
 
+/**
+ * Обрабатывает изменение списка предметов пользователем на этапе регистрации.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleChangeSubjectsCallback(ctx: MyContext) {
   await ctx.answerCallbackQuery();
 
@@ -47,6 +52,11 @@ export async function handleChangeSubjectsCallback(ctx: MyContext) {
   return;
 }
 
+/**
+ * Обрабатывает выбор/отмену предметов в интерфейсе регистрации.
+ * @param {MyContext} ctx - контекст бота
+ * @returns {Promise<void>}
+ */
 export async function handleSubjectSelectionCallback(ctx: MyContext) {
   const data = ctx.callbackQuery?.data;
 
@@ -121,6 +131,7 @@ export async function handleSubjectSelectionCallback(ctx: MyContext) {
 
       delete ctx.session.user.state;
       delete ctx.session.user.selectedSubjects;
+      delete ctx.session.user.fio;
 
       await manageKeyboard(
         ctx,
@@ -172,6 +183,7 @@ export async function handleSubjectSelectionCallback(ctx: MyContext) {
 
       delete ctx.session.user.state;
       delete ctx.session.user.selectedSubjects;
+      delete ctx.session.user.fio;
 
       await manageKeyboard(
         ctx,
@@ -192,4 +204,9 @@ export async function handleSubjectSelectionCallback(ctx: MyContext) {
     }
     return;
   }
+
+  await ctx.answerCallbackQuery({
+    text: "❌ Неизвестная команда.",
+    show_alert: true
+  });
 }
