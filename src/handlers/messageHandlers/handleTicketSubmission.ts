@@ -1,16 +1,15 @@
 // src/handlers/messageHandlers/handleTicketSubmission.ts
+// Ticketing, Finished
+// Можно добавить удаление файла, после отправки
 
 import { MyContext } from "../../types.js";
 import { manageKeyboard } from "../../utils/manageKeyboard.js";
 import { getUserTicketsText, userKeyboard_Ticketing } from "../../keyboards/keyboardUserTicketing.js";
 import { readJson, writeJson } from "../../storage/jsonStorage.js";
 import { USERS_FILE, SUBJECTS_DATA_FILE } from "../../config.js";
-import { manageTicketMessage } from "../../utils/manageTicketMessage.js";
 import { updateTicketStatusInSheet } from "../../storage/googleSheets.js";
 import { downloadAndSaveTicketFile } from "../../utils/fileManager.js";
 import { UserRecord, AllSubjectsData } from "../../types.js";
-import { buildTicketCaption } from "../../keyboards/keyboardEditorTicketReview.js";
-import { keyboardEditorTicketReview } from "../../keyboards/keyboardEditorTicketReview.js";
 
 /**
  * Обрабатывает отправку файла с решением билета от студента.
@@ -42,7 +41,7 @@ export async function handleTicketSubmission(ctx: MyContext): Promise<void> {
     return;
   }
 
-  const question = subjectData.questions.find(q => q.number === ticketNumber);
+  const question = subjectData.find(q => q.number === ticketNumber);
   if (!question) {
     await ctx.reply(`❌ Вопрос №${ticketNumber} не найден в предмете "${subject}".`);
     delete ctx.session.user.awaitingTicketSubmission;
@@ -68,7 +67,7 @@ export async function handleTicketSubmission(ctx: MyContext): Promise<void> {
   }
 
   subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
-  const freshQuestion = subjectsData[subject]?.questions.find(q => q.number === ticketNumber);
+  const freshQuestion = subjectsData[subject]?.find(q => q.number === ticketNumber);
   if (!freshQuestion) {
     await ctx.reply("❌ Ошибка: билет исчез после сохранения файла.");
     delete ctx.session.user.awaitingTicketSubmission;
@@ -79,17 +78,7 @@ export async function handleTicketSubmission(ctx: MyContext): Promise<void> {
   freshQuestion.comment = studentComment;
   await writeJson(SUBJECTS_DATA_FILE, subjectsData);
 
-  const caption = buildTicketCaption(subject, ticketNumber, user.fio, studentComment);
-
   try {
-    await manageTicketMessage(
-      ctx.api,
-      subject,
-      ticketNumber,
-      caption,
-      keyboardEditorTicketReview(subject, ticketNumber)
-    );
-
     await updateTicketStatusInSheet(subject, ticketNumber, "pending");
 
     const text = await getUserTicketsText(user);
@@ -106,7 +95,7 @@ export async function handleTicketSubmission(ctx: MyContext): Promise<void> {
     await ctx.reply("❌ Не удалось отправить файл. Попробуйте позже.");
 
     subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
-    const q = subjectsData[subject]?.questions.find(q => q.number === ticketNumber);
+    const q = subjectsData[subject]?.find(q => q.number === ticketNumber);
     if (q) {
       q.status = "not_submitted";
       delete q.comment;

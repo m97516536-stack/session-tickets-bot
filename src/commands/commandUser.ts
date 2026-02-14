@@ -13,7 +13,7 @@ import { userKeyboard_Ticketing, getUserTicketsText } from "../keyboards/keyboar
  * @param {MyContext} ctx - контекст бота
  * @returns {Promise<void>}
  */
-export async function commandStart(ctx: MyContext) {
+export async function commandUser(ctx: MyContext) {
   if (ctx.chat?.type !== "private") return;
 
   const currentPhase = await fastCheckPhase();
@@ -29,9 +29,9 @@ export async function commandStart(ctx: MyContext) {
       text = "📋 Меню регистрации";
       keyboard = userKeyboard_Registration();
     } else if (currentPhase == "editing") {
-      text = "✏️ Сейчас идёт этап редактирования. Пожалуйста, дождитесь его окончания.";
+      text = "✏️  Сейчас идёт этап подготовки.\n    Сейчас изветсно промежуточное распределение билетов, но до начала этапа подготовки билетов это распределение может измениться. Пожалуйста, дождитесь его начала.";
       keyboard = undefined;
-    } else if (currentPhase == "ticketing") {
+    } else if (currentPhase == "ticketing"  || currentPhase == "finished") {
       try {
         const user = users[userId];
         text = await getUserTicketsText(user);
@@ -41,9 +41,6 @@ export async function commandStart(ctx: MyContext) {
         text = "⚠️ Не удалось загрузить список билетов.";
         keyboard = undefined;
       }
-    } else if (currentPhase == "finished") {
-      text = "✅ Всё завершено";
-      keyboard = undefined;
     } else return;
 
     await manageKeyboard(

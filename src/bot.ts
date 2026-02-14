@@ -8,14 +8,16 @@ import { MyContext, MySession } from "./types.js";
 
 import { readJson, writeJson } from "./storage/jsonStorage.js";
 
-import { commandStart } from "./commands/commandStart.js";
+import { commandUser } from "./commands/commandUser.js";
 import { commandAdmin } from "./commands/commandAdmin.js";
-import { commandInit } from "./commands/commandInit.js";
+import { commandEditor } from "./commands/commandEditor.js";
 
 import { handleCallbackQuery } from "./handlers/callbackHandlers/callbackRouter.js";
 import { handleMessage } from "./handlers/messageHandlers/messageRouter.js";
 
 import { startPhaseUpdater } from "./utils/updatePhase.js";
+import { cleanupExpiredEditorMessages } from "./utils/editorMessageManager.js";
+import { startKeyboardCleanup } from "./utils/manageKeyboard.js";
 
 /**
  * Инициализирует и запускает Telegram-бота.
@@ -48,9 +50,9 @@ bot.use(
   })
 );
 
-bot.command("start", commandStart);
+bot.command("user", commandUser);
 bot.command("admin", commandAdmin);
-bot.command("init", commandInit);
+bot.command("editor", commandEditor);
 
 bot.on("message", async (ctx) => {
   await handleMessage(ctx);
@@ -62,7 +64,25 @@ bot.on("callback_query:data", async (ctx) => {
 
 console.log("🚀 Бот запущен!");
 await startPhaseUpdater();
+
+await cleanupExpiredEditorMessages(bot.api);
+console.log("🧹 Очистка просроченных сообщений редакторов выполнена");
+
+const cleanupInterval = setInterval(() => {
+  cleanupExpiredEditorMessages(bot.api).catch(err => {
+    console.error("Ошибка при периодической очистке сообщений редакторов:", err);
+  });
+}, 30 * 60 * 1000);
+
+startKeyboardCleanup(bot);
+
 bot.start();
+
+await bot.api.setMyCommands([
+  { command: "user", description: "Регистрация / Меню пользователя" },
+  { command: "editor", description: "Меню для редакторов" },
+  { command: "admin", description: "Меню администратора" }
+]);
 
 bot.catch((err) => {
   const ctx = err.ctx;
@@ -83,4 +103,20 @@ bot.catch((err) => {
   } else {
     console.error("Неизвестная ошибка:", e);
   }
+});
+
+process.on("SIGINT", async () => {
+  console.log("\n🛑 Получен сигнал завершения, останавливаем бота...");
+  clearInterval(cleanupInterval);
+  await bot.stop();
+  console.log("✅ Бот остановлен");
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  console.log("\n🛑 Получен SIGTERM, останавливаем бота...");
+  clearInterval(cleanupInterval);
+  await bot.stop();
+  console.log("✅ Бот остановлен");
+  process.exit(0);
 });

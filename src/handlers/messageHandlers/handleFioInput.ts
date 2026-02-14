@@ -1,4 +1,5 @@
 // src/handlers/messageHandlers/handleFioInput.ts
+// Registration
 
 import { MyContext } from "../../types.js";
 import { manageKeyboard } from "../../utils/manageKeyboard.js";
@@ -6,6 +7,7 @@ import { readJson, writeJson } from "../../storage/jsonStorage.js";
 import { USERS_FILE, SUBJECTS_DATA_FILE } from "../../config.js";
 import { keyboardSubjectSelection } from "../../keyboards/keyboardUserRegistration.js";
 import { AllSubjectsData, UserRecord } from "../../types.js";
+import { deleteMessages } from "../../utils/deleteMessages.js";
 
 /**
  * Обрабатывает ввод ФИ пользователя при регистрации.
@@ -14,6 +16,9 @@ import { AllSubjectsData, UserRecord } from "../../types.js";
  */
 export async function handleFioInput(ctx: MyContext) {
   const fio = ctx.message?.text?.trim();
+  const chatId = ctx.chat?.id;
+
+  await deleteMessages(ctx.api, chatId, ctx.message?.message_id);
 
   if (!fio) {
     await manageKeyboard(

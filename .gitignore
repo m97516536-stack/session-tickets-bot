@@ -5,3 +5,4 @@ dist/
 package-lock.json
 credentials.json
 .vscode/*
+tsconfig.tsbuildinfo

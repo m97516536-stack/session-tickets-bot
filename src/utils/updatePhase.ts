@@ -4,10 +4,11 @@
 import { bot } from "../bot.js";
 import { updateAllKeyboards } from "./updateKeyboards.js";
 import { distributeTickets } from "./distributeTickets.js";
+import { distributeEditorTickets } from "./distributeEditorTickets.js";
 
 import { PhaseConfig, UserRecord, MySession } from "../types.js";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
-import { PHASE_CONFIG_FILE, USERS_FILE, SESSIONS_FILE, KEYBOARD_STATES_FILE } from "../config.js";
+import { ADMIN_IDS, PHASE_CONFIG_FILE, USERS_FILE, SESSIONS_FILE, KEYBOARD_STATES_FILE } from "../config.js";
 
 /**
  * Обновляет текущую фазу на основе дедлайнов в конфигурации.
@@ -55,9 +56,13 @@ async function updatePhaseAndWriteIfChanged(): Promise<PhaseConfig["currentPhase
   if (oldPhase !== config.currentPhase) {
     if (oldPhase === "registration" && config.currentPhase === "editing") {
       try {
-        console.log("🎯 Запуск автоматического распределения билетов...");
+        console.log("🎯 Запуск распределения билетов редакторам...");
+        await distributeEditorTickets();
+        console.log("✅ Распределение билетов редакторам успешно завершено!");
+
+        console.log("🎯 Запуск распределения билетов студентам...");
         await distributeTickets();
-        console.log("✅ Распределение билетов успешно завершено!");
+        console.log("✅ Распределение билетов студентам успешно завершено!");
       } catch (error) {
         console.error("❌ КРИТИЧЕСКАЯ ОШИБКА при распределении билетов:", error);
 
@@ -73,13 +78,21 @@ async function updatePhaseAndWriteIfChanged(): Promise<PhaseConfig["currentPhase
     if (oldPhase === "editing" && config.currentPhase === "ticketing") {
       try {
         console.log("🧹 Запуск очистки незарегистрированных пользователей...");
-        
+
         const users = await readJson<Record<string, UserRecord>>(USERS_FILE);
         const validUsers: Record<string, UserRecord> = {};
         const removedUsers: { id: string; fio: string }[] = [];
-        
+
         for (const [userId, user] of Object.entries(users)) {
-          const isValidUser = user.fio?.trim() && user.subjects?.length && user.subjects.length > 0;
+          if (ADMIN_IDS.includes(user.telegramId)) {
+            validUsers[userId] = user;
+            continue;
+          }
+
+          const hasTickets = user.assignedTickets && Object.values(user.assignedTickets).some(tickets => tickets.length > 0);
+          const isEditor = user.editorSubjects && user.editorSubjects.length > 0;
+
+          const isValidUser = hasTickets || isEditor;
 
           if (isValidUser) {
             validUsers[userId] = user;
@@ -94,30 +107,30 @@ async function updatePhaseAndWriteIfChanged(): Promise<PhaseConfig["currentPhase
         if (removedUsers.length > 0) {
           const sessions = await readJson<Record<string, MySession>>(SESSIONS_FILE);
           const validSessions: Record<string, MySession> = {};
-          
+
           for (const [sessionId, session] of Object.entries(sessions)) {
             if (validUsers[sessionId]) {
               validSessions[sessionId] = session;
             }
           }
-          
+
           await writeJson(SESSIONS_FILE, validSessions);
           console.log(`🧹 Удалено сессий: ${removedUsers.length}`);
         }
-        
+
         if (removedUsers.length > 0) {
           const keyboardStates = await readJson<Record<string, { messageId: number; chatId: number }>>(KEYBOARD_STATES_FILE);
           const validKeyboardStates: Record<string, { messageId: number; chatId: number }> = {};
           const removedKeyboardStates: string[] = [];
-          
+
           for (const [stateKey, state] of Object.entries(keyboardStates)) {
             const chatIdStr = stateKey.split(':')[0];
             const chatId = parseInt(chatIdStr);
-            
+
             const isUserValid = Object.values(validUsers).some(
               user => user.telegramId === chatId
             );
-            
+
             if (isUserValid) {
               validKeyboardStates[stateKey] = state;
             } else {
@@ -125,23 +138,48 @@ async function updatePhaseAndWriteIfChanged(): Promise<PhaseConfig["currentPhase
               console.log(`⌨️ Удаляю состояние клавиатуры: ${stateKey} (chatId: ${chatId})`);
             }
           }
-          
+
           await writeJson(KEYBOARD_STATES_FILE, validKeyboardStates);
         }
-        
+
         console.log(`✅ Очистка завершена! Удалено пользователей: ${removedUsers.length}`);
         if (removedUsers.length > 0) {
           console.log(`📝 Список удаленных: ${removedUsers.map(u => `${u.fio} (${u.id})`).join(', ')}`);
         }
       } catch (error) {
         console.error("❌ КРИТИЧЕСКАЯ ОШИБКА при очистке пользователей:", error);
-        
+
         config.currentPhase = oldPhase;
         console.log(`⚠️ Фаза сохранена как "${oldPhase}" из-за ошибки очистки`);
-        
+
         await writeJson(PHASE_CONFIG_FILE, config);
-        
+    
         return config.currentPhase;
+      }
+    }
+
+    if (oldPhase === "ticketing" && config.currentPhase === "finished") {
+      try {
+        console.log("📨 Отправка уведомления о завершении всем пользователям...");
+
+        const users = await readJson<Record<string, UserRecord>>(USERS_FILE);
+        const userIds = Object.values(users).map(user => user.telegramId);
+
+        for (const userId of userIds) {
+          try {
+            await bot.api.sendMessage(
+              userId,
+              "✅ Подготовка билетов завершена! Все материалы готовы к использованию."
+            );
+            await new Promise(resolve => setTimeout(resolve, 50));
+          } catch (sendError) {
+            console.warn(`⚠️ Не удалось отправить сообщение пользователю ${userId}:`, sendError);
+          }
+        }
+
+        console.log(`✅ Уведомление отправлено ${userIds.length} пользователям`);
+      } catch (error) {
+        console.error("❌ Ошибка при отправке уведомления о завершении:", error);
       }
     }
 

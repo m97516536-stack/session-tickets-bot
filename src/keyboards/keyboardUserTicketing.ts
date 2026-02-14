@@ -19,7 +19,7 @@ export async function getUserTicketsText(user: UserRecord): Promise<string> {
     if (!ticketNumbers?.length) continue;
 
     const subjectData = subjectsData[subject];
-    if (!subjectData?.questions) {
+    if (!subjectData) {
       sections.push(`❌ ${subject}: данные недоступны`);
       continue;
     }
@@ -28,7 +28,7 @@ export async function getUserTicketsText(user: UserRecord): Promise<string> {
     const sortedNumbers = [...ticketNumbers].sort((a, b) => a - b);
 
     for (const num of sortedNumbers) {
-      const question = subjectData.questions.find(q => q.number === num);
+      const question = subjectData.find(q => q.number === num);
       if (!question) {
         items.push(`  • ❓ ${num}. Вопрос не найден`);
         continue;
@@ -38,7 +38,7 @@ export async function getUserTicketsText(user: UserRecord): Promise<string> {
         question.status === "approved" ? "🟢" :
         question.status === "revision" ? "🔴" :
         question.status === "pending"  ? "🟡" :
-                                        "⚪";
+                                         "⚪";
       items.push(`  • ${emoji} ${num}. ${question.text}`);
     }
 
@@ -61,7 +61,9 @@ export async function getUserTicketsText(user: UserRecord): Promise<string> {
  */
 export function userKeyboard_Ticketing() {
   return new InlineKeyboard()
-    .text("📚 Отправить билет", "submit_ticket");
+    .text("📚 Отправить билет", "submit_ticket")
+    .row()
+    .text("🔄 Обновить", "refresh_tickets");
 }
 
 /**
@@ -77,10 +79,10 @@ export async function keyboardSubmitTicket(user: UserRecord): Promise<InlineKeyb
 
   for (const [subject, ticketNumbers] of Object.entries(user.assignedTickets || {})) {
     const subjectData = subjectsData[subject];
-    if (!subjectData || !Array.isArray(subjectData.questions)) continue;
+    if (!subjectData || !Array.isArray(subjectData)) continue;
 
     const sendableTickets = ticketNumbers.filter(num => {
-      const q = subjectData.questions.find(q => q.number === num);
+      const q = subjectData.find(q => q.number === num);
       return q && (q.status === "not_submitted" || q.status === "revision");
     });
 

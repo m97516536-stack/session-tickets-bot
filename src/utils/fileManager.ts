@@ -77,7 +77,7 @@ export async function getLatestTicketFilePath(subject: string, ticketNumber: num
   const subjectData = subjectsData[subject];
   if (!subjectData) return null;
   
-  const question = subjectData.questions.find(q => q.number === ticketNumber);
+  const question = subjectData.find(q => q.number === ticketNumber);
   if (!question?.fileExtension) return null;
   
   const filename = `${ticketNumber}_${safeSubject}_v${version}${question.fileExtension}`;
@@ -138,14 +138,13 @@ export async function downloadAndSaveTicketFile(
     throw new Error(`Предмет "${subject}" не найден в данных`);
   }
   
-  const question = subjectData.questions.find(q => q.number === ticketNumber);
+  const question = subjectData.find(q => q.number === ticketNumber);
   if (!question) {
     throw new Error(`Вопрос №${ticketNumber} не найден в предмете "${subject}"`);
   }
   
   question.fileVersion = newVersion;
   question.fileExtension = extension;
-  question.fileId = fileId;
   
   await writeJson(SUBJECTS_DATA_FILE, subjectsData);
   

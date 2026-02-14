@@ -1,9 +1,11 @@
 // src/handlers/messageHandlers/handleDateInput.ts
+// Preparation
 
 import { MyContext } from "../../types.js";
 import { manageKeyboard } from "../../utils/manageKeyboard.js";
 import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate } from "../../keyboards/keyboardAdminPreparation.js";
 import { getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
+import { deleteMessages } from "../../utils/deleteMessages.js";
 
 /**
  * Обрабатывает ввод даты администратором при установке дедлайнов.
@@ -12,11 +14,14 @@ import { getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
  */
 export async function handleDateInput(ctx: MyContext) {
   const text = ctx.message?.text?.trim();
+  const chatId = ctx.chat?.id;
 
   const state = ctx.session.admin.state;
   if (!state || !state.startsWith("awaiting_")) return;
 
   const stage = state.replace("awaiting_", "").replace("_end_date", "") as "registration" | "editing" | "ticketing";
+
+  await deleteMessages(ctx.api, chatId, ctx.message?.message_id);
 
   if (!text) {
     await manageKeyboard(
@@ -94,7 +99,7 @@ export async function handleDateInput(ctx: MyContext) {
 
   await manageKeyboard(
     ctx,
-    getDeadlinesText(ctx.session.admin),
+    await getDeadlinesText(ctx.session.admin),
     adminKeyboard_SetDeadlines(),
     "admin",
     true

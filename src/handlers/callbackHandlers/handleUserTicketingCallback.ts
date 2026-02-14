@@ -44,6 +44,25 @@ export async function handleUserTicketingCallback(ctx: MyContext): Promise<void>
     return;
   }
 
+  if (data === "refresh_tickets") {
+    await ctx.answerCallbackQuery();
+
+    const users = await readJson<Record<string, UserRecord>>(USERS_FILE);
+    const user = users[String(ctx.from!.id)];
+
+    if (user) {
+      const text = await getUserTicketsText(user);
+      await manageKeyboard(
+        ctx,
+        text,
+        userKeyboard_Ticketing(),
+        "user",
+        false
+      );
+    }
+    return;
+  }
+
   if (data?.startsWith("submit_ticket_") && data !== "submit_ticket") {
     await ctx.answerCallbackQuery();
 
@@ -85,6 +104,14 @@ export async function handleUserTicketingCallback(ctx: MyContext): Promise<void>
   if (data === "back_to_ticketing_menu") {
     await ctx.answerCallbackQuery();
 
+    delete ctx.session.user.allSubjects;
+    delete ctx.session.user.awaitingSubjectId;
+    delete ctx.session.user.awaitingTicketSubmission;
+    delete ctx.session.user.fio;
+    delete ctx.session.user.selectedEditorSubjects;
+    delete ctx.session.user.selectedSubjects;
+    delete ctx.session.user.state;
+
     const text = await getUserTicketsText(user);
     await manageKeyboard(
       ctx,
@@ -100,9 +127,4 @@ export async function handleUserTicketingCallback(ctx: MyContext): Promise<void>
     await ctx.answerCallbackQuery();
     return;
   }
-
-  await ctx.answerCallbackQuery({
-    text: "❌ Неизвестная команда.",
-    show_alert: true
-  });
 }

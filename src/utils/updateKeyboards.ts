@@ -3,13 +3,15 @@
 import { Bot } from "grammy";
 import { MyContext, PhaseConfig, UserRecord } from "../types.js";
 import { readJson, writeJson } from "../storage/jsonStorage.js";
-import { KEYBOARD_STATES_FILE, USERS_FILE } from "../config.js";
+import { KEYBOARD_STATES_FILE, USERS_FILE, PHASE_CONFIG_FILE } from "../config.js";
 import { InlineKeyboard } from "grammy";
 import { adminKeyboard_Preparation } from "../keyboards/keyboardAdminPreparation.js";
 import { adminKeyboard_Registration } from "../keyboards/keyboardAdminRegistration.js";
 import { adminKeyboard_Editing } from "../keyboards/keyboardAdminEditing.js";
+import { adminKeyboard_Ticketing } from "../keyboards/keyboardAdminTicketing.js";
 import { userKeyboard_Registration } from "../keyboards/keyboardUserRegistration.js";
 import { userKeyboard_Ticketing, getUserTicketsText } from "../keyboards/keyboardUserTicketing.js";
+import { keyboardEditorSelectTicket, getEditorTicketsText } from "../keyboards/keyboardEditorTicketing.js";
 
 interface KeyboardState {
   messageId: number;
@@ -68,29 +70,60 @@ export async function updateAllKeyboards(bot: Bot<MyContext>, currentPhase: Phas
       if (type === "admin") {
         switch (currentPhase) {
           case "preparation":
-            text = "🔧 Админ-панель (подготовительный этап)";
+            text = "🔧 Админ-панель - Этап подготовки";
             keyboard = adminKeyboard_Preparation();
             break;
           case "registration":
-            text = "📋 Админ-панель (этап регистрации)";
+            text = "📋 Админ-панель - Этап регистрации";
             keyboard = adminKeyboard_Registration();
             break;
           case "editing":
-            text = "✏️ Админ-панель (этап редактирования)";
+            text = "✏️ Админ-панель - Этап редактирования";
             keyboard = adminKeyboard_Editing();
             break;
           case "ticketing":
-            text = "📝 Админ-панель (этап подготовки билетов)";
+            text = "📝 Админ-панель - Этап подготовки билетов";
+            keyboard = adminKeyboard_Ticketing(false);
             break;
           case "finished":
-            text = "✅ Админ-панель (всё завершено)";
+            text = "✅ Админ-панель - Конец подготовки билетов";
+            keyboard = adminKeyboard_Ticketing(true);
             break;
           default:
             console.warn(`❓ Неизвестная фаза для админа: ${currentPhase}`);
             continue;
         }
-      } 
-      else if (type === "user") {
+      } else if (type === "editor") {
+        const userId = String(chatId);
+        switch (currentPhase) {
+          case "ticketing":
+          case "finished":
+            try {
+              const fullUsers = await readJson<Record<string, UserRecord>>(USERS_FILE);
+              const user = fullUsers[userId];
+
+              if (user && user.editor) {
+                text = await getEditorTicketsText(user);
+                keyboard = await keyboardEditorSelectTicket(user);
+              } else {
+                text = "❌ У вас нет прав редактора.";
+              }
+            } catch (err) {
+              console.error("Ошибка при генерации текста редактора:", err);
+              text = "⚠️ Не удалось загрузить панель редактора.";
+            }
+            break;
+          default:
+            try {
+              await bot.api.deleteMessage(chatId, state.messageId);
+              console.log(`✅ Клавиатура редактора удалена для ${stateKey} (фаза: ${currentPhase})`);
+              continue;
+            } catch (deleteError) {
+              console.warn(`⚠️ Не удалось удалить клавиатуру редактора для ${stateKey}:`, deleteError);
+              continue;
+            }
+        }
+      } else if (type === "user") {
         const userId = String(chatId);
         const isRegistered = !!users[userId];
         
@@ -122,10 +155,17 @@ export async function updateAllKeyboards(bot: Bot<MyContext>, currentPhase: Phas
             break;
           case "finished":
             text = "✅ Все этапы завершены. Спасибо за участие!";
+            keyboard = userKeyboard_Ticketing();
             break;
           default:
-            console.warn(`❓ Неизвестная фаза для пользователя: ${currentPhase}`);
-            continue;
+            try {
+              await bot.api.deleteMessage(chatId, state.messageId);
+              console.log(`✅ Клавиатура редактора удалена для ${stateKey} (фаза: ${currentPhase})`);
+              continue;
+            } catch (deleteError) {
+              console.warn(`⚠️ Не удалось удалить клавиатуру редактора для ${stateKey}:`, deleteError);
+              continue;
+            }
         }
       } else {
         console.warn(`❓ Неизвестный тип клавиатуры "${type}" для ${stateKey}`);

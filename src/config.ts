@@ -8,7 +8,6 @@ import "dotenv/config";
  * @exports
  * - BOT_TOKEN: string — токен бота
  * - ADMIN_ID: number — ID админа
- * - SUPERGROUP_ID: number — ID группы
  * - SPREADSHEET_ID: string — ID таблицы
  * - SESSIONS_FILE: string — файл хранения сессий пользователей
  * - USERS_FILE: string — файл с данными зарегистрированных пользователей
@@ -16,6 +15,8 @@ import "dotenv/config";
  * - SUBJECTS_DATA_FILE: string — файл с вопросами по предметам и статусами билетов
  * - PHASE_CONFIG_FILE: string — файл с текущей фазой и дедлайнами
  * - KEYBOARD_STATES_FILE: string — файл состояний клавиатур по чатам
+ * - EDITOR_REQUESTS_FILE: string — временный файл для с желающми быть редакторами
+ * - EDITOR_MESSAGES_FILE: string — файл состояний сообщений с билетами
  * 
  * @throws {Error} если любая из переменных окружения не задана в .env
  */
@@ -29,8 +30,12 @@ function getEnvVar(name: string): string {
 }
 
 export const BOT_TOKEN = getEnvVar("BOT_TOKEN");
-export const ADMIN_ID = parseInt(getEnvVar("ADMIN_ID"), 10);
-export const SUPERGROUP_ID = parseInt(getEnvVar("SUPERGROUP_ID"), 10);
+export const ADMIN_IDS = getEnvVar("ADMIN_IDS")
+  .split(',')
+  .map(id => id.trim())
+  .filter(id => id !== '')
+  .map(id => parseInt(id, 10))
+  .filter(id => !isNaN(id));
 export const SPREADSHEET_ID = getEnvVar("SPREADSHEET_ID");
 
 export const SESSIONS_FILE = "user_sessions.json";
@@ -39,3 +44,5 @@ export const CREDENTIALS_PATH = "./credentials.json";
 export const SUBJECTS_DATA_FILE = "subjects_data.json";
 export const PHASE_CONFIG_FILE = "phases.json";
 export const KEYBOARD_STATES_FILE = "keyboardStates.json";
+export const EDITOR_REQUESTS_FILE = "editor_requests.json";
+export const EDITOR_MESSAGES_FILE = "editor_messages.json";

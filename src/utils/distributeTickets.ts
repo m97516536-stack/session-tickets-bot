@@ -18,7 +18,7 @@ export async function distributeTicketsForSubject(subject: string): Promise<void
     throw new Error(`Предмет "${subject}" не найден в данных.`);
   }
   
-  const subjectTickets = subjectsData[subject].questions;
+  const subjectTickets = subjectsData[subject];
   if (!subjectTickets || subjectTickets.length === 0) {
     throw new Error(`В предмете "${subject}" нет вопросов.`);
   }
@@ -47,7 +47,7 @@ export async function distributeTicketsForSubject(subject: string): Promise<void
   }
 
   const updatedSubjectsData = JSON.parse(JSON.stringify(subjectsData)) as AllSubjectsData;
-  for (const question of updatedSubjectsData[subject].questions) {
+  for (const question of updatedSubjectsData[subject]) {
     question.assignedTo = undefined;
     question.status = "not_submitted";
   }
@@ -67,7 +67,7 @@ export async function distributeTicketsForSubject(subject: string): Promise<void
 
     for (let j = index; j < index + q; j++) {
       const questionNumber = reorderedTickets[j].number;
-      const qToUpdate = updatedSubjectsData[subject].questions.find(q => q.number === questionNumber);
+      const qToUpdate = updatedSubjectsData[subject].find(q => q.number === questionNumber);
       if (qToUpdate) {
         qToUpdate.assignedTo = user.telegramId;
         qToUpdate.status = "not_submitted";
@@ -85,7 +85,7 @@ export async function distributeTicketsForSubject(subject: string): Promise<void
 
     for (let j = index; j < index + q + 1; j++) {
       const questionNumber = reorderedTickets[j].number;
-      const qToUpdate = updatedSubjectsData[subject].questions.find(q => q.number === questionNumber);
+      const qToUpdate = updatedSubjectsData[subject].find(q => q.number === questionNumber);
       if (qToUpdate) {
         qToUpdate.assignedTo = user.telegramId;
         qToUpdate.status = "not_submitted";

@@ -5,7 +5,7 @@ import { PHASE_CONFIG_FILE } from "../../config.js";
 import { readJson, writeJson } from "../../storage/jsonStorage.js";
 import { PhaseConfig } from "../../types.js";
 import { manageKeyboard } from "../../utils/manageKeyboard.js";
-import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate, getDeadlinesText } from "../../keyboards/keyboardAdminPreparation.js";
+import { adminKeyboard_SetDeadlines, adminKeyboard_AwaitingDate, getDeadlinesText, adminKeyboard_AwaitingSubjectName } from "../../keyboards/keyboardAdminPreparation.js";
 import { adminKeyboard_Registration } from "../../keyboards/keyboardAdminRegistration.js";
 
 /**
@@ -23,35 +23,11 @@ export async function handleAdminPreparationCallback(ctx: MyContext) {
 
     await manageKeyboard(
       ctx,
-      getDeadlinesText(ctx.session.admin),
+      await getDeadlinesText(ctx.session.admin),
       adminKeyboard_SetDeadlines(),
       "admin",
       false
     );
-    return;
-  }
-
-  if (data === "awaiting_input_registration") {
-    await ctx.answerCallbackQuery({
-      text: "Введите дату окончания регистрации (формат: YYYY-MM-DD)",
-      show_alert: true,
-    });
-    return;
-  }
-
-  if (data === "awaiting_input_editing") {
-    await ctx.answerCallbackQuery({
-      text: "Введите дату окончания редактирования (формат: YYYY-MM-DD)",
-      show_alert: true,
-    });
-    return;
-  }
-
-  if (data === "awaiting_input_ticketing") {
-    await ctx.answerCallbackQuery({
-      text: "Введите дату окончания подготовки (формат: YYYY-MM-DD)",
-      show_alert: true,
-    });
     return;
   }
 
@@ -62,7 +38,7 @@ export async function handleAdminPreparationCallback(ctx: MyContext) {
 
     await manageKeyboard(
       ctx,
-      getDeadlinesText(ctx.session.admin) + "\n\nВведите дату окончания регистрации (формат: YYYY-MM-DD):",
+      await getDeadlinesText(ctx.session.admin) + "\n\nВведите дату окончания регистрации (формат: YYYY-MM-DD):",
       adminKeyboard_AwaitingDate("registration"),
       "admin",
       true
@@ -77,7 +53,7 @@ export async function handleAdminPreparationCallback(ctx: MyContext) {
 
     await manageKeyboard(
       ctx,
-      getDeadlinesText(ctx.session.admin) + "\n\nВведите дату окончания редактирования (формат: YYYY-MM-DD):",
+      await getDeadlinesText(ctx.session.admin) + "\n\nВведите дату окончания редактирования (формат: YYYY-MM-DD):",
       adminKeyboard_AwaitingDate("editing"),
       "admin",
       true
@@ -92,7 +68,7 @@ export async function handleAdminPreparationCallback(ctx: MyContext) {
 
     await manageKeyboard(
       ctx,
-      getDeadlinesText(ctx.session.admin) + "\n\nВведите дату окончания подготовки (формат: YYYY-MM-DD):",
+      await getDeadlinesText(ctx.session.admin) + "\n\nВведите дату окончания подготовки (формат: YYYY-MM-DD):",
       adminKeyboard_AwaitingDate("ticketing"),
       "admin",
       true
@@ -100,15 +76,15 @@ export async function handleAdminPreparationCallback(ctx: MyContext) {
     return;
   }
 
-  if (data === "cancel_set_date") {
+  if (data === "load_subjects_from_sheet") {
     await ctx.answerCallbackQuery();
 
-    ctx.session.admin.state = "setting_deadlines";
+    ctx.session.admin.state = "awaiting_subject_name";
 
     await manageKeyboard(
       ctx,
-      getDeadlinesText(ctx.session.admin),
-      adminKeyboard_SetDeadlines(),
+      await getDeadlinesText(ctx.session.admin) + "\n\nВведите названия предметов для загрузки из таблицы через запятую:",
+      adminKeyboard_AwaitingSubjectName(),
       "admin",
       false
     );
@@ -176,8 +152,23 @@ export async function handleAdminPreparationCallback(ctx: MyContext) {
     return;
   }
 
-  await ctx.answerCallbackQuery({
-    text: "❌ Неизвестная команда.",
-    show_alert: true
-  });
+  if (data === "awaiting") {
+    await ctx.answerCallbackQuery();
+    return;
+  }
+
+  if (data === "cancel") {
+    await ctx.answerCallbackQuery();
+
+    ctx.session.admin.state = "setting_deadlines";
+
+    await manageKeyboard(
+      ctx,
+      await getDeadlinesText(ctx.session.admin),
+      adminKeyboard_SetDeadlines(),
+      "admin",
+      false
+    );
+    return;
+  }
 }

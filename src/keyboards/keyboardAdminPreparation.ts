@@ -1,7 +1,10 @@
-// src/keyboards/keyboardAdminPreRegistration.ts
+// src/keyboards/keyboardAdminPreparation.ts
 
 import { InlineKeyboard } from "grammy";
 import { AdminSession } from "../types.js";
+import { readJson } from "../storage/jsonStorage.js";
+import { AllSubjectsData } from "../types.js";
+import { SUBJECTS_DATA_FILE } from "../config.js";
 
 /**
  * Форматирует дату в формат DD.MM.YYYY (UTC).
@@ -17,19 +20,35 @@ function formatDate(dateString: string): string {
 }
 
 /**
- * Генерирует текстовое сообщение с текущими дедлайнами.
+ * Генерирует текстовое сообщение с текущими дедлайнами и списком загруженных предметов.
  * @param {AdminSession} adminSession - сессия админа с полями deadlines
  * @returns {string} готовое сообщение для отправки пользователю
  */
-export function getDeadlinesText(adminSession: AdminSession): string {
+export async function getDeadlinesText(adminSession: AdminSession): Promise<string> {
   const deadlines = adminSession.deadlines;
-  return (
-    "📅 Установите даты окончания этапов:\n\n" +
-    `1. Регистрация: ${deadlines?.registrationEnd ? formatDate(deadlines.registrationEnd) : "не установлена"}\n` +
-    `2. Редактирование: ${deadlines?.editingEnd ? formatDate(deadlines.editingEnd) : "не установлена"}\n` +
-    `3. Подготовка: ${deadlines?.ticketingEnd ? formatDate(deadlines.ticketingEnd) : "не установлена"}\n\n` +
-    "Нажмите на кнопку, чтобы установить дату."
+
+  const subjectsData = await readJson<AllSubjectsData>(SUBJECTS_DATA_FILE);
+  const loadedSubjects = Object.keys(subjectsData).filter(subject => 
+    Array.isArray(subjectsData[subject]) && subjectsData[subject].length > 0
   );
+
+  let text = "📅 Установите даты окончания этапов:\n\n";
+  
+  text += `1. Регистрация: ${deadlines?.registrationEnd ? formatDate(deadlines.registrationEnd) : "не установлена"}\n`;
+  text += `2. Редактирование: ${deadlines?.editingEnd ? formatDate(deadlines.editingEnd) : "не установлена"}\n`;
+  text += `3. Подготовка: ${deadlines?.ticketingEnd ? formatDate(deadlines.ticketingEnd) : "не установлена"}\n\n`;
+  
+  if (loadedSubjects.length > 0) {
+    text += `📚 Загружено предметов (${loadedSubjects.length}):\n`;
+    text += loadedSubjects.map((subject, index) => `   ${index + 1}. ${subject}`).join('\n');
+    text += '\n\n';
+  } else {
+    text += "📚 Предметы не загружены.\n\n";
+  }
+  
+  text += "Нажмите на кнопку, чтобы установить дату или загрузить предметы.";
+  
+  return text;
 }
 
 /**
@@ -42,7 +61,7 @@ export function adminKeyboard_Preparation() {
 }
 
 /**
- * Клавиатура для установки дедлайнов по этапам.
+ * Клавиатура для установки дедлайнов по этапам или загрузки предметов.
  * @returns {InlineKeyboard}
  */
 export function adminKeyboard_SetDeadlines() {
@@ -53,7 +72,9 @@ export function adminKeyboard_SetDeadlines() {
     .row()
     .text(`📅 3. Подготовка`, "set_tick_end")
     .row()
-    .text("✅ Подтвердить", "confirm_deadlines");
+    .text("📥 Загрузить предметы", "load_subjects_from_sheet")
+    .row()
+    .text("✅ Подтвердить и начать этап регистрации", "confirm_deadlines");
 }
 
 /**
@@ -63,7 +84,18 @@ export function adminKeyboard_SetDeadlines() {
  */
 export function adminKeyboard_AwaitingDate(forStage: "registration" | "editing" | "ticketing") {
   return new InlineKeyboard()
-    .text(`⏳ Введите дату (${forStage})...`, `awaiting_input_${forStage}`)
+    .text(`⏳ Введите дату (${forStage})...`, "awaiting")
     .row()
-    .text("❌ Отмена", "cancel_set_date");
+    .text("❌ Отмена", "cancel");
+}
+
+/**
+ * Клавиатура-заглушка при ожидании ввода пердметов.
+ * @returns {InlineKeyboard}
+ */
+export function adminKeyboard_AwaitingSubjectName() {
+  return new InlineKeyboard()
+    .text("⏳ Введите названия предметов...", "awaiting")
+    .row()
+    .text("❌ Отмена", "cancel");
 }
